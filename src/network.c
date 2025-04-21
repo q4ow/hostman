@@ -1,0 +1,261 @@
+#include "network.h"
+#include "logging.h"
+#include "encryption.h"
+#include "utils.h"
+#include <curl/curl.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
+#define MIN_PROGRESS_UPDATE_MS 100
+
+typedef struct
+{
+    char *data;
+    size_t size;
+} response_data_t;
+
+static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t real_size = size * nmemb;
+    response_data_t *resp = (response_data_t *)userp;
+
+    char *ptr = realloc(resp->data, resp->size + real_size + 1);
+    if (!ptr)
+    {
+        log_error("Failed to allocate memory for response data");
+        return 0;
+    }
+
+    resp->data = ptr;
+    memcpy(&(resp->data[resp->size]), contents, real_size);
+    resp->size += real_size;
+    resp->data[resp->size] = 0;
+
+    return real_size;
+}
+
+static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
+                             curl_off_t ultotal, curl_off_t ulnow)
+{
+    if (ultotal == 0)
+        return 0;
+
+    progress_data_t *prog = (progress_data_t *)clientp;
+    double percent = (double)ulnow / (double)ultotal * 100.0;
+
+    time_t now = time(NULL);
+    if (percent != prog->last_percent &&
+        (difftime(now, prog->last_time) * 1000 >= MIN_PROGRESS_UPDATE_MS ||
+         percent == 100.0 || prog->last_percent == 0.0))
+    {
+
+        double speed = 0.0;
+        if (difftime(now, prog->last_time) > 0)
+        {
+            speed = (ulnow - prog->last_bytes) / difftime(now, prog->last_time);
+        }
+
+        fprintf(stderr, "\r\033[K");
+        fprintf(stderr, "Uploading: [");
+
+        int bar_width = 30;
+        int pos = bar_width * percent / 100.0;
+
+        for (int i = 0; i < bar_width; i++)
+        {
+            if (i < pos)
+                fprintf(stderr, "=");
+            else if (i == pos)
+                fprintf(stderr, ">");
+            else
+                fprintf(stderr, " ");
+        }
+
+        fprintf(stderr, "] %.1f%% ", percent);
+
+        char progress_str[32];
+        format_file_size(ulnow, progress_str, sizeof(progress_str));
+
+        char total_str[32];
+        format_file_size(ultotal, total_str, sizeof(total_str));
+
+        fprintf(stderr, "(%s / %s)", progress_str, total_str);
+
+        if (speed > 0)
+        {
+            char speed_str[32];
+            format_file_size(speed, speed_str, sizeof(speed_str));
+            fprintf(stderr, " - %s/s", speed_str);
+        }
+
+        prog->last_percent = percent;
+        prog->last_bytes = ulnow;
+        prog->last_time = now;
+    }
+
+    return 0;
+}
+
+bool network_init(void)
+{
+    return (curl_global_init(CURL_GLOBAL_ALL) == CURLE_OK);
+}
+
+upload_response_t *network_upload_file(const char *file_path, host_config_t *host)
+{
+    CURL *curl;
+    CURLcode res;
+    struct curl_slist *headers = NULL;
+    response_data_t response_data = {0};
+    progress_data_t prog_data = {0};
+    upload_response_t *response = malloc(sizeof(upload_response_t));
+
+    if (!response)
+    {
+        log_error("Failed to allocate memory for upload response");
+        return NULL;
+    }
+
+    response->success = false;
+    response->url = NULL;
+    response->error_message = NULL;
+
+    if (access(file_path, R_OK) != 0)
+    {
+        response->error_message = strdup("File not found or not readable");
+        return response;
+    }
+
+    struct stat file_stat;
+    if (stat(file_path, &file_stat) != 0)
+    {
+        response->error_message = strdup("Failed to get file information");
+        return response;
+    }
+
+    curl = curl_easy_init();
+    if (!curl)
+    {
+        response->error_message = strdup("Failed to initialize curl");
+        return response;
+    }
+
+    curl_mime *mime = curl_mime_init(curl);
+    if (!mime)
+    {
+        response->error_message = strdup("Failed to initialize mime form");
+        curl_easy_cleanup(curl);
+        return response;
+    }
+
+    curl_mimepart *part = curl_mime_addpart(mime);
+    curl_mime_name(part, host->file_form_field);
+    curl_mime_filedata(part, file_path);
+
+    for (int i = 0; i < host->static_field_count; i++)
+    {
+        part = curl_mime_addpart(mime);
+        curl_mime_name(part, host->static_field_names[i]);
+        curl_mime_data(part, host->static_field_values[i], CURL_ZERO_TERMINATED);
+    }
+
+    if (strcmp(host->auth_type, "bearer") == 0)
+    {
+        char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
+        if (api_key)
+        {
+            char auth_header[1024];
+            snprintf(auth_header, sizeof(auth_header), "%s: Bearer %s",
+                     host->api_key_name, api_key);
+            headers = curl_slist_append(headers, auth_header);
+            free(api_key);
+        }
+        else
+        {
+            response->error_message = strdup("Failed to decrypt API key");
+            curl_easy_cleanup(curl);
+            curl_mime_free(mime);
+            return response;
+        }
+    }
+
+    curl_easy_setopt(curl, CURLOPT_URL, host->api_endpoint);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog_data);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+    prog_data.last_time = time(NULL);
+
+    log_info("Connecting to host: %s", host->api_endpoint);
+    fprintf(stderr, "Uploading file: %s\n", file_path);
+
+    res = curl_easy_perform(curl);
+
+    fprintf(stderr, "\r\033[K");
+
+    if (res != CURLE_OK)
+    {
+        response->error_message = strdup(curl_easy_strerror(res));
+        log_error("Upload failed: %s", response->error_message);
+    }
+    else
+    {
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+        if (http_code >= 200 && http_code < 300)
+        {
+            char *url = extract_json_string(response_data.data, host->response_url_json_path);
+            if (url)
+            {
+                response->success = true;
+                response->url = url;
+                log_info("Upload successful, URL: %s", url);
+            }
+            else
+            {
+                response->error_message = strdup("Failed to extract URL from response");
+                log_error("Failed to extract URL from response: %s", response_data.data);
+            }
+        }
+        else
+        {
+            char error_msg[256];
+            snprintf(error_msg, sizeof(error_msg), "HTTP error: %ld", http_code);
+            response->error_message = strdup(error_msg);
+            log_error("HTTP error %ld: %s", http_code, response_data.data);
+        }
+    }
+
+    curl_easy_cleanup(curl);
+    curl_mime_free(mime);
+    curl_slist_free_all(headers);
+    free(response_data.data);
+
+    return response;
+}
+
+void network_free_response(upload_response_t *response)
+{
+    if (response)
+    {
+        free(response->url);
+        free(response->error_message);
+        free(response);
+    }
+}
+
+void network_cleanup(void)
+{
+    curl_global_cleanup();
+}
