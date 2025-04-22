@@ -1,10 +1,19 @@
-```markdown
 # Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.0] - 2025-04-23
+
+### Added
+
+- Support for deletion URLs provided by hosts to remove uploaded files
+- New `delete-file` command to delete files from remote hosts using deletion URLs
+- New `delete-upload` command to remove upload records from local history
+- Visual indicators in the upload history for files with deletion URLs
+- Improved error handling for network operations
 
 ## [1.0.0] - 2025-04-22
 
@@ -25,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON path parsing for extracting the uploaded URL from the host response.
 - Build system using CMake.
 - Basic command-line interface parsing.
-```
+````

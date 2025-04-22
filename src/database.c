@@ -85,6 +85,7 @@ bool db_init(void)
         "host_name TEXT NOT NULL,"
         "local_path TEXT NOT NULL,"
         "remote_url TEXT UNIQUE NOT NULL,"
+        "deletion_url TEXT,"
         "filename TEXT NOT NULL,"
         "size INTEGER NOT NULL"
         ");";
@@ -104,15 +105,15 @@ bool db_init(void)
 }
 
 bool db_add_upload(const char *host_name, const char *local_path,
-                   const char *remote_url, const char *filename, size_t size)
+                   const char *remote_url, const char *deletion_url, const char *filename, size_t size)
 {
     if (!db && !db_init())
     {
         return false;
     }
 
-    const char *sql = "INSERT INTO uploads (timestamp, host_name, local_path, remote_url, filename, size) "
-                      "VALUES (?, ?, ?, ?, ?, ?);";
+    const char *sql = "INSERT INTO uploads (timestamp, host_name, local_path, remote_url, deletion_url, filename, size) "
+                      "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt *stmt;
     int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -128,8 +129,9 @@ bool db_add_upload(const char *host_name, const char *local_path,
     sqlite3_bind_text(stmt, 2, host_name, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 3, local_path, -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 4, remote_url, -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 5, filename, -1, SQLITE_STATIC);
-    sqlite3_bind_int64(stmt, 6, size);
+    sqlite3_bind_text(stmt, 5, deletion_url, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 6, filename, -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 7, size);
 
     result = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
@@ -167,7 +169,7 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
 
     if (host_name)
     {
-        sql = "SELECT id, timestamp, host_name, local_path, remote_url, filename, size "
+        sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
               "FROM uploads WHERE host_name = ? "
               "ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
 
@@ -184,7 +186,7 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
     }
     else
     {
-        sql = "SELECT id, timestamp, host_name, local_path, remote_url, filename, size "
+        sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
               "FROM uploads ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
 
         result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
@@ -215,6 +217,7 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
                     free(records[i]->host_name);
                     free(records[i]->local_path);
                     free(records[i]->remote_url);
+                    free(records[i]->deletion_url);
                     free(records[i]->filename);
                     free(records[i]);
                 }
@@ -234,6 +237,7 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
                 free(records[i]->host_name);
                 free(records[i]->local_path);
                 free(records[i]->remote_url);
+                free(records[i]->deletion_url);
                 free(records[i]->filename);
                 free(records[i]);
             }
@@ -247,8 +251,9 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
         record->host_name = strdup((const char *)sqlite3_column_text(stmt, 2));
         record->local_path = strdup((const char *)sqlite3_column_text(stmt, 3));
         record->remote_url = strdup((const char *)sqlite3_column_text(stmt, 4));
-        record->filename = strdup((const char *)sqlite3_column_text(stmt, 5));
-        record->size = sqlite3_column_int64(stmt, 6);
+        record->deletion_url = strdup((const char *)sqlite3_column_text(stmt, 5));
+        record->filename = strdup((const char *)sqlite3_column_text(stmt, 6));
+        record->size = sqlite3_column_int64(stmt, 7);
 
         records[*count] = record;
         (*count)++;
@@ -264,6 +269,7 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
             free(records[i]->host_name);
             free(records[i]->local_path);
             free(records[i]->remote_url);
+            free(records[i]->deletion_url);
             free(records[i]->filename);
             free(records[i]);
         }
@@ -288,12 +294,52 @@ void db_free_records(upload_record_t **records, int count)
             free(records[i]->host_name);
             free(records[i]->local_path);
             free(records[i]->remote_url);
+            free(records[i]->deletion_url);
             free(records[i]->filename);
             free(records[i]);
         }
     }
 
     free(records);
+}
+
+bool db_delete_upload(int id)
+{
+    if (!db && !db_init())
+    {
+        return false;
+    }
+
+    const char *sql = "DELETE FROM uploads WHERE id = ?;";
+
+    sqlite3_stmt *stmt;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (result != SQLITE_OK)
+    {
+        log_error("Failed to prepare statement: %s", sqlite3_errmsg(db));
+        return false;
+    }
+
+    sqlite3_bind_int(stmt, 1, id);
+
+    result = sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    if (result != SQLITE_DONE)
+    {
+        log_error("Failed to delete upload: %s", sqlite3_errmsg(db));
+        return false;
+    }
+
+    int changes = sqlite3_changes(db);
+    if (changes == 0)
+    {
+        log_warn("No upload record found with ID: %d", id);
+        return false;
+    }
+
+    log_info("Deleted upload record with ID: %d", id);
+    return true;
 }
 
 void db_close(void)

@@ -122,6 +122,7 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
 
     response->success = false;
     response->url = NULL;
+    response->deletion_url = NULL;
     response->error_message = NULL;
     response->request_time_ms = 0.0;
 
@@ -249,6 +250,20 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
                 response->success = true;
                 response->url = url;
                 log_info("Upload successful, URL: %s", url);
+
+                if (host->response_deletion_url_json_path && strlen(host->response_deletion_url_json_path) > 0)
+                {
+                    char *deletion_url = extract_json_string(response_data.data, host->response_deletion_url_json_path);
+                    if (deletion_url)
+                    {
+                        response->deletion_url = deletion_url;
+                        log_info("Deletion URL extracted: %s", deletion_url);
+                    }
+                    else
+                    {
+                        log_warn("Could not extract deletion URL using path: %s", host->response_deletion_url_json_path);
+                    }
+                }
             }
             else
             {
@@ -278,6 +293,7 @@ void network_free_response(upload_response_t *response)
     if (response)
     {
         free(response->url);
+        free(response->deletion_url);
         free(response->error_message);
         free(response);
     }

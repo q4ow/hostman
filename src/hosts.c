@@ -153,6 +153,7 @@ int hosts_add_interactive(void)
     char *request_body_format = read_input_default("Request body format", "multipart");
     char *file_form_field = read_input_default("File form field name", "file");
     char *response_url_json_path = read_input_default("JSON path to URL in response", "url");
+    char *response_deletion_url_json_path = read_input_default("JSON path to deletion URL in response", "deletion_url");
     char **static_field_names = NULL;
     char **static_field_values = NULL;
     int static_field_count = 0;
@@ -208,7 +209,7 @@ int hosts_add_interactive(void)
     }
 
     bool result = hosts_add(name, api_endpoint, auth_type, api_key_name, api_key,
-                            request_body_format, file_form_field, response_url_json_path,
+                            request_body_format, file_form_field, response_url_json_path, response_deletion_url_json_path,
                             static_field_names, static_field_values, static_field_count);
 
     hostman_config_t *config = config_load();
@@ -234,6 +235,7 @@ int hosts_add_interactive(void)
     free(request_body_format);
     free(file_form_field);
     free(response_url_json_path);
+    free(response_deletion_url_json_path);
 
     for (int i = 0; i < static_field_count; i++)
     {
@@ -258,12 +260,12 @@ int hosts_add_interactive(void)
 bool hosts_add(const char *name, const char *api_endpoint, const char *auth_type,
                const char *api_key_name, const char *api_key,
                const char *request_body_format, const char *file_form_field,
-               const char *response_url_json_path,
+               const char *response_url_json_path, const char *response_deletion_url_json_path,
                char **static_field_names, char **static_field_values, int static_field_count)
 {
 
     if (!name || !api_endpoint || !auth_type || !api_key_name || !api_key ||
-        !request_body_format || !file_form_field || !response_url_json_path)
+        !request_body_format || !file_form_field || !response_url_json_path || !response_deletion_url_json_path)
     {
         log_error("Missing required host configuration fields");
         return false;
@@ -299,6 +301,7 @@ bool hosts_add(const char *name, const char *api_endpoint, const char *auth_type
     host->request_body_format = strdup(request_body_format);
     host->file_form_field = strdup(file_form_field);
     host->response_url_json_path = strdup(response_url_json_path);
+    host->response_deletion_url_json_path = strdup(response_deletion_url_json_path);
 
     if (static_field_count > 0 && static_field_names && static_field_values)
     {
@@ -317,6 +320,7 @@ bool hosts_add(const char *name, const char *api_endpoint, const char *auth_type
             free(host->request_body_format);
             free(host->file_form_field);
             free(host->response_url_json_path);
+            free(host->response_deletion_url_json_path);
             free(host->static_field_names);
             free(host->static_field_values);
             free(host);
@@ -342,6 +346,7 @@ bool hosts_add(const char *name, const char *api_endpoint, const char *auth_type
         free(host->request_body_format);
         free(host->file_form_field);
         free(host->response_url_json_path);
+        free(host->response_deletion_url_json_path);
 
         for (int i = 0; i < host->static_field_count; i++)
         {

@@ -13,6 +13,8 @@ typedef enum
     CMD_REMOVE_HOST,
     CMD_SET_DEFAULT_HOST,
     CMD_CONFIG,
+    CMD_DELETE_UPLOAD,
+    CMD_DELETE_FILE,
     CMD_HELP
 } command_type_t;
 
@@ -27,6 +29,7 @@ typedef struct
     char *config_key;
     char *config_value;
     char *command_name;
+    int upload_id;
 } command_args_t;
 
 command_args_t parse_args(int argc, char *argv[]);

@@ -82,6 +82,8 @@ void print_command_help(const char *command)
         print_section_header("COMMANDS");
         print_command_syntax("upload", "<file_path>"), printf("   Upload a file to a hosting service\n");
         print_command_syntax("list-uploads", ""), printf("   List upload history\n");
+        print_command_syntax("delete-upload", "<id>"), printf("   Delete an upload record from history\n");
+        print_command_syntax("delete-file", "<id>"), printf("   Delete a file from the remote host\n");
         print_command_syntax("list-hosts", ""), printf("   List configured hosts\n");
         print_command_syntax("add-host", ""), printf("   Add a new host configuration\n");
         print_command_syntax("remove-host", "<name>"), printf("   Remove a host configuration\n");
@@ -119,6 +121,32 @@ void print_command_help(const char *command)
         print_option("--host <name>", "Filter uploads by host");
         print_option("--page <number>", "Page number for pagination (default: 1)");
         print_option("--limit <count>", "Number of records per page (default: 20)");
+        print_option("--help", "Show this help message");
+        return;
+    }
+
+    if (strcmp(command, "delete-upload") == 0)
+    {
+        print_section_header("DELETE-UPLOAD");
+        printf("Delete an upload record by ID\n\n");
+
+        print_section_header("USAGE");
+        printf("  hostman delete-upload <id>\n\n");
+
+        print_section_header("OPTIONS");
+        print_option("--help", "Show this help message");
+        return;
+    }
+
+    if (strcmp(command, "delete-file") == 0)
+    {
+        print_section_header("DELETE-FILE");
+        printf("Delete a file from the remote host using the deletion URL\n\n");
+
+        print_section_header("USAGE");
+        printf("  hostman delete-file <id>\n\n");
+
+        print_section_header("OPTIONS");
         print_option("--help", "Show this help message");
         return;
     }
@@ -239,6 +267,84 @@ command_args_t parse_args(int argc, char *argv[])
             default:
                 break;
             }
+        }
+    }
+    else if (strcmp(argv[1], "delete-upload") == 0)
+    {
+        args.type = CMD_DELETE_UPLOAD;
+
+        static struct option long_options[] = {
+            {"help", no_argument, 0, '?'},
+            {0, 0, 0, 0}};
+
+        int option_index = 0;
+        int c;
+        optind = 2;
+
+        while ((c = getopt_long(argc, argv, "", long_options, &option_index)) != -1)
+        {
+            switch (c)
+            {
+            case '?':
+                print_command_help("delete-upload");
+                exit(EXIT_SUCCESS);
+            default:
+                break;
+            }
+        }
+
+        if (optind < argc)
+        {
+            args.upload_id = atoi(argv[optind]);
+            if (args.upload_id <= 0)
+            {
+                print_error("Error: Invalid upload ID\n");
+                args.type = CMD_UNKNOWN;
+            }
+        }
+        else
+        {
+            print_error("Error: Upload ID required\n");
+            args.type = CMD_UNKNOWN;
+        }
+    }
+    else if (strcmp(argv[1], "delete-file") == 0)
+    {
+        args.type = CMD_DELETE_FILE;
+
+        static struct option long_options[] = {
+            {"help", no_argument, 0, '?'},
+            {0, 0, 0, 0}};
+
+        int option_index = 0;
+        int c;
+        optind = 2;
+
+        while ((c = getopt_long(argc, argv, "", long_options, &option_index)) != -1)
+        {
+            switch (c)
+            {
+            case '?':
+                print_command_help("delete-file");
+                exit(EXIT_SUCCESS);
+            default:
+                break;
+            }
+        }
+
+        if (optind < argc)
+        {
+            args.upload_id = atoi(argv[optind]);
+            if (args.upload_id <= 0)
+            {
+                print_error("Error: Invalid upload ID\n");
+                args.type = CMD_UNKNOWN;
+            }
+        }
+        else
+        {
+            print_error("Error: Upload ID required\n");
+            args.type = CMD_UNKNOWN;
         }
     }
     else if (strcmp(argv[1], "add-host") == 0)
@@ -529,7 +635,14 @@ int execute_command(command_args_t *args)
             }
             print_info("  Request time: %s\n", time_str);
 
-            printf("\n\033[1;32m%s\033[0m\n\n", response->url);
+            printf("\n\033[1;32m%s\033[0m\n", response->url);
+
+            if (response->deletion_url)
+            {
+                printf("\n\033[1;33mDeletion URL: %s\033[0m\n", response->deletion_url);
+                print_info("  Save this URL to delete the file later\n");
+            }
+            printf("\n");
 
             const char *clipboard_manager = get_clipboard_manager_name();
             if (clipboard_manager && copy_to_clipboard(response->url))
@@ -538,7 +651,7 @@ int execute_command(command_args_t *args)
             }
 
             db_add_upload(host->name, args->file_path, response->url,
-                          filename, file_stat.st_size);
+                          response->deletion_url, filename, file_stat.st_size);
 
             free(filename);
             network_free_response(response);
@@ -603,14 +716,37 @@ int execute_command(command_args_t *args)
                 strcpy(filename_display, records[i]->filename);
             }
 
-            printf("%-20s \033[0;36m%-15s\033[0m %-35s \033[0;32m%s\033[0m\n",
+            printf("%-20s \033[0;36m%-15s\033[0m %-35s \033[0;32m%s\033[0m",
                    time_str,
                    records[i]->host_name,
                    filename_display,
                    records[i]->remote_url);
+
+            if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
+            {
+                printf(" \033[1;33m[ID: %d]\033[0m", records[i]->id);
+            }
+            printf("\n");
         }
 
         printf("\n\033[1mPage %d, showing %d record(s)\033[0m\n", args->page, count);
+
+        bool has_deletion_urls = false;
+        for (int i = 0; i < count; i++)
+        {
+            if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
+            {
+                has_deletion_urls = true;
+                break;
+            }
+        }
+
+        if (has_deletion_urls)
+        {
+            printf("\nRecords marked with \033[1;33m[ID: X]\033[0m have deletion URLs.\n");
+            printf("Use the following command to view and use deletion URLs:\n");
+            printf("  hostman delete-file <id>\n");
+        }
 
         db_free_records(records, count);
         return EXIT_SUCCESS;
@@ -730,6 +866,231 @@ int execute_command(command_args_t *args)
                 return EXIT_FAILURE;
             }
         }
+    }
+
+    case CMD_DELETE_UPLOAD:
+    {
+        if (args->upload_id <= 0)
+        {
+            print_error("Error: Invalid upload ID\n");
+            return EXIT_INVALID_ARGS;
+        }
+
+        int count = 0;
+        upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
+        bool found = false;
+
+        if (records)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (records[i]->id == args->upload_id)
+                {
+                    found = true;
+                    printf("Delete the following record?\n\n");
+
+                    char time_str[21];
+                    struct tm *tm_info = localtime(&records[i]->timestamp);
+                    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+                    char size_str[32];
+                    format_file_size(records[i]->size, size_str, sizeof(size_str));
+
+                    print_info("ID: %d\n", records[i]->id);
+                    print_info("Date: %s\n", time_str);
+                    print_info("Host: %s\n", records[i]->host_name);
+                    print_info("File: %s (%s)\n", records[i]->filename, size_str);
+                    print_info("URL: %s\n\n", records[i]->remote_url);
+
+                    break;
+                }
+            }
+            db_free_records(records, count);
+        }
+
+        if (!found)
+        {
+            print_error("Error: No upload record found with ID %d\n", args->upload_id);
+            return EXIT_FAILURE;
+        }
+
+        char response[10];
+        printf("Are you sure you want to delete this record? [y/N]: ");
+        if (fgets(response, sizeof(response), stdin) == NULL)
+        {
+            print_error("Error reading response\n");
+            return EXIT_FAILURE;
+        }
+
+        if (response[0] == 'y' || response[0] == 'Y')
+        {
+            if (db_delete_upload(args->upload_id))
+            {
+                print_success("Upload record deleted successfully.\n");
+                return EXIT_SUCCESS;
+            }
+            else
+            {
+                print_error("Error: Failed to delete upload record.\n");
+                return EXIT_FAILURE;
+            }
+        }
+        else
+        {
+            print_info("Delete operation cancelled.\n");
+            return EXIT_SUCCESS;
+        }
+    }
+
+    case CMD_DELETE_FILE:
+    {
+        if (args->upload_id <= 0)
+        {
+            print_error("Error: Invalid upload ID\n");
+            return EXIT_INVALID_ARGS;
+        }
+
+        int count = 0;
+        upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
+        bool found = false;
+        char *deletion_url = NULL;
+        upload_record_t *record = NULL;
+
+        if (records)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (records[i]->id == args->upload_id)
+                {
+                    found = true;
+                    record = records[i];
+
+                    if (!record->deletion_url || strlen(record->deletion_url) == 0)
+                    {
+                        print_error("Error: This upload doesn't have a deletion URL\n");
+                        db_free_records(records, count);
+                        return EXIT_FAILURE;
+                    }
+
+                    deletion_url = strdup(record->deletion_url);
+
+                    printf("Delete the following file from the remote host?\n\n");
+
+                    char time_str[21];
+                    struct tm *tm_info = localtime(&record->timestamp);
+                    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+                    char size_str[32];
+                    format_file_size(record->size, size_str, sizeof(size_str));
+
+                    print_info("ID: %d\n", record->id);
+                    print_info("Date: %s\n", time_str);
+                    print_info("Host: %s\n", record->host_name);
+                    print_info("File: %s (%s)\n", record->filename, size_str);
+                    print_info("URL: %s\n", record->remote_url);
+                    print_info("Deletion URL: %s\n\n", record->deletion_url);
+                    break;
+                }
+            }
+        }
+
+        if (!found || !deletion_url)
+        {
+            print_error("Error: No upload record found with ID %d\n", args->upload_id);
+            if (records)
+                db_free_records(records, count);
+            return EXIT_FAILURE;
+        }
+
+        char response[10];
+        printf("Are you sure you want to delete this file from the remote host? [y/N]: ");
+        if (fgets(response, sizeof(response), stdin) == NULL)
+        {
+            print_error("Error reading response\n");
+            if (records)
+                db_free_records(records, count);
+            free(deletion_url);
+            return EXIT_FAILURE;
+        }
+
+        if (response[0] != 'y' && response[0] != 'Y')
+        {
+            print_info("Delete operation cancelled.\n");
+            if (records)
+                db_free_records(records, count);
+            free(deletion_url);
+            return EXIT_SUCCESS;
+        }
+
+        CURL *curl;
+        CURLcode res;
+
+        curl = curl_easy_init();
+        if (!curl)
+        {
+            print_error("Error: Failed to initialize cURL\n");
+            if (records)
+                db_free_records(records, count);
+            free(deletion_url);
+            return EXIT_NETWORK_ERROR;
+        }
+
+        print_info("Sending deletion request...\n");
+
+        curl_easy_setopt(curl, CURLOPT_URL, deletion_url);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+        res = curl_easy_perform(curl);
+
+        if (res != CURLE_OK)
+        {
+            print_error("Error: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            if (records)
+                db_free_records(records, count);
+            free(deletion_url);
+            return EXIT_NETWORK_ERROR;
+        }
+
+        long http_code = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+        curl_easy_cleanup(curl);
+        free(deletion_url);
+
+        bool success = (http_code >= 200 && http_code < 300);
+
+        if (success)
+        {
+            print_success("File deleted successfully from the remote host!\n");
+
+            char confirm[10];
+            printf("Do you want to remove the record from the local database too? [y/N]: ");
+            if (fgets(confirm, sizeof(confirm), stdin) != NULL &&
+                (confirm[0] == 'y' || confirm[0] == 'Y'))
+            {
+                if (db_delete_upload(args->upload_id))
+                {
+                    print_success("Upload record deleted from local database.\n");
+                }
+                else
+                {
+                    print_error("Failed to delete upload record from local database.\n");
+                }
+            }
+        }
+        else
+        {
+            print_error("Failed to delete file. HTTP status code: %ld\n", http_code);
+            print_info("The file server might require a specific request method or additional parameters.\n");
+            print_info("You can try visiting the deletion URL in your browser: %s\n", record->deletion_url);
+        }
+
+        if (records)
+            db_free_records(records, count);
+        return success ? EXIT_SUCCESS : EXIT_NETWORK_ERROR;
     }
 
     case CMD_HELP:

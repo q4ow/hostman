@@ -7,6 +7,7 @@ Hostman is a robust, cross-platform command-line application for uploading files
 - Upload files to multiple configurable hosting services
 - Manage hosting service configurations
 - Track upload history using SQLite
+- Support for file deletion via host-provided deletion URLs
 - Secure API key storage with encryption
 - Visual progress bar during uploads
 - Detailed logging
@@ -70,6 +71,12 @@ hostman list-uploads
 # View upload history with pagination
 hostman list-uploads --page 2 --limit 10
 
+# Delete an upload record from local history
+hostman delete-upload <id>
+
+# Delete a file from the remote host (if deletion URL is available)
+hostman delete-file <id>
+
 # View/modify configuration
 hostman config get log_level
 hostman config set log_level DEBUG
@@ -95,11 +102,38 @@ Hostman uses a JSON configuration file located at `$HOME/.config/hostman/config.
       "static_form_fields": {
         "public": "false"
       },
-      "response_url_json_path": "url"
+      "response_url_json_path": "url",
+      "response_deletion_url_json_path": "deletion_url"
     }
   }
 }
 ```
+
+## File Deletion Support
+
+Hostman now supports deletion of files from hosting services that provide deletion URLs in their upload responses. When configuring a host, you can specify the JSON path to the deletion URL in the response using the `response_deletion_url_json_path` field.
+
+For example, if your hosting service returns:
+
+```json
+{
+  "success": true,
+  "message": "File Uploaded",
+  "fileUrl": "https://example.com/xyz123.png",
+  "deletionUrl": "https://example.com/delete?key=random-deletion-key"
+}
+```
+
+You would set:
+```
+response_url_json_path: "fileUrl"
+response_deletion_url_json_path: "deletionUrl"
+```
+
+When you upload a file to a host with deletion URL support:
+1. The deletion URL will be displayed and stored in the database
+2. In the upload history, records with deletion URLs are marked with [ID: X]
+3. You can use `hostman delete-file <id>` to delete the file from the remote host
 
 ## Security
 
@@ -107,11 +141,12 @@ API keys are encrypted in the configuration file. By default, Hostman uses AES-2
 
 ## Troubleshooting
 
-###Common Issues
+### Common Issues
 
-    Upload fails: Check your API key and internet connection
-    Permission denied: Ensure proper file permissions for the config directory
-    Missing libraries: Install required dependencies
+- Upload fails: Check your API key and internet connection
+- Permission denied: Ensure proper file permissions for the config directory
+- Missing libraries: Install required dependencies
+- File deletion fails: Some hosts may require specific request methods or additional parameters
 
 ## Logs
 
