@@ -123,6 +123,7 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
     response->success = false;
     response->url = NULL;
     response->error_message = NULL;
+    response->request_time_ms = 0.0;
 
     if (access(file_path, R_OK) != 0)
     {
@@ -218,7 +219,15 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
     log_info("Connecting to host: %s", host->api_endpoint);
     fprintf(stderr, "Uploading file: %s\n", file_path);
 
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
+
     res = curl_easy_perform(curl);
+
+    clock_gettime(CLOCK_MONOTONIC, &end_time);
+    double time_taken_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0;
+    time_taken_ms += (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+    response->request_time_ms = time_taken_ms;
 
     fprintf(stderr, "\r\033[K");
 

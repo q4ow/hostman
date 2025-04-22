@@ -17,6 +17,7 @@ typedef struct
     bool success;
     char *url;
     char *error_message;
+    double request_time_ms;
 } upload_response_t;
 
 bool network_init(void);

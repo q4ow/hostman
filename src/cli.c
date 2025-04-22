@@ -514,8 +514,20 @@ int execute_command(command_args_t *args)
             char size_str[32];
             format_file_size(file_stat.st_size, size_str, sizeof(size_str));
 
-            print_info("File: %s (%s)\n", filename, size_str);
-            print_info("Host: %s\n", host->name);
+            print_info("  File: %s (%s)\n", filename, size_str);
+            print_info("  Host: %s\n", host->name);
+
+            double time_ms = response->request_time_ms;
+            char time_str[32];
+            if (time_ms < 1000)
+            {
+                snprintf(time_str, sizeof(time_str), "%.2f ms", time_ms);
+            }
+            else
+            {
+                snprintf(time_str, sizeof(time_str), "%.2f sec", time_ms / 1000.0);
+            }
+            print_info("  Request time: %s\n", time_str);
 
             printf("\n\033[1;32m%s\033[0m\n\n", response->url);
 
