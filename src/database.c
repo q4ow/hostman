@@ -10,6 +10,7 @@
 #include <errno.h>
 
 static sqlite3 *db = NULL;
+static bool has_deletion_url_column = false;
 
 static char *db_get_path(void)
 {
@@ -31,6 +32,51 @@ static char *db_get_path(void)
     free(cache_dir);
 
     return path;
+}
+
+static bool check_deletion_url_column()
+{
+    if (!db)
+        return false;
+
+    sqlite3_stmt *stmt;
+    const char *sql = "PRAGMA table_info(uploads);";
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (result != SQLITE_OK)
+    {
+        log_error("Failed to prepare statement to check schema: %s", sqlite3_errmsg(db));
+        return false;
+    }
+
+    bool found = false;
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        const char *column_name = (const char *)sqlite3_column_text(stmt, 1);
+        if (column_name && strcmp(column_name, "deletion_url") == 0)
+        {
+            found = true;
+            break;
+        }
+    }
+
+    sqlite3_finalize(stmt);
+
+    if (!found)
+    {
+        log_info("Deletion URL column not found in database schema");
+        const char *alter_sql = "ALTER TABLE uploads ADD COLUMN deletion_url TEXT;";
+        result = sqlite3_exec(db, alter_sql, NULL, NULL, NULL);
+        if (result != SQLITE_OK)
+        {
+            log_warn("Failed to add deletion_url column: %s", sqlite3_errmsg(db));
+            return false;
+        }
+        log_info("Added deletion_url column to database schema");
+        found = true;
+    }
+
+    return found;
 }
 
 bool db_init(void)
@@ -85,7 +131,6 @@ bool db_init(void)
         "host_name TEXT NOT NULL,"
         "local_path TEXT NOT NULL,"
         "remote_url TEXT UNIQUE NOT NULL,"
-        "deletion_url TEXT,"
         "filename TEXT NOT NULL,"
         "size INTEGER NOT NULL"
         ");";
@@ -100,6 +145,8 @@ bool db_init(void)
         db = NULL;
         return false;
     }
+
+    has_deletion_url_column = check_deletion_url_column();
 
     return true;
 }
@@ -169,9 +216,18 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
 
     if (host_name)
     {
-        sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
-              "FROM uploads WHERE host_name = ? "
-              "ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        if (has_deletion_url_column)
+        {
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
+                  "FROM uploads WHERE host_name = ? "
+                  "ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        }
+        else
+        {
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, filename, size "
+                  "FROM uploads WHERE host_name = ? "
+                  "ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        }
 
         result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
         if (result != SQLITE_OK)
@@ -186,8 +242,16 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
     }
     else
     {
-        sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
-              "FROM uploads ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        if (has_deletion_url_column)
+        {
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
+                  "FROM uploads ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        }
+        else
+        {
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, filename, size "
+                  "FROM uploads ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
+        }
 
         result = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
         if (result != SQLITE_OK)
@@ -217,7 +281,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
                     free(records[i]->host_name);
                     free(records[i]->local_path);
                     free(records[i]->remote_url);
-                    free(records[i]->deletion_url);
+                    if (records[i]->deletion_url)
+                        free(records[i]->deletion_url);
                     free(records[i]->filename);
                     free(records[i]);
                 }
@@ -237,7 +302,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
                 free(records[i]->host_name);
                 free(records[i]->local_path);
                 free(records[i]->remote_url);
-                free(records[i]->deletion_url);
+                if (records[i]->deletion_url)
+                    free(records[i]->deletion_url);
                 free(records[i]->filename);
                 free(records[i]);
             }
@@ -246,14 +312,26 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
             return NULL;
         }
 
+        int col_offset = 0;
         record->id = sqlite3_column_int(stmt, 0);
         record->timestamp = sqlite3_column_int64(stmt, 1);
         record->host_name = strdup((const char *)sqlite3_column_text(stmt, 2));
         record->local_path = strdup((const char *)sqlite3_column_text(stmt, 3));
         record->remote_url = strdup((const char *)sqlite3_column_text(stmt, 4));
-        record->deletion_url = strdup((const char *)sqlite3_column_text(stmt, 5));
-        record->filename = strdup((const char *)sqlite3_column_text(stmt, 6));
-        record->size = sqlite3_column_int64(stmt, 7);
+
+        if (has_deletion_url_column)
+        {
+            const unsigned char *deletion_url_text = sqlite3_column_text(stmt, 5);
+            record->deletion_url = deletion_url_text ? strdup((const char *)deletion_url_text) : NULL;
+            col_offset = 1;
+        }
+        else
+        {
+            record->deletion_url = NULL;
+        }
+
+        record->filename = strdup((const char *)sqlite3_column_text(stmt, 5 + col_offset));
+        record->size = sqlite3_column_int64(stmt, 6 + col_offset);
 
         records[*count] = record;
         (*count)++;
@@ -269,7 +347,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
             free(records[i]->host_name);
             free(records[i]->local_path);
             free(records[i]->remote_url);
-            free(records[i]->deletion_url);
+            if (records[i]->deletion_url)
+                free(records[i]->deletion_url);
             free(records[i]->filename);
             free(records[i]);
         }
