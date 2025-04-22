@@ -182,6 +182,25 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
             return response;
         }
     }
+    else if (strcmp(host->auth_type, "header") == 0)
+    {
+        char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
+        if (api_key)
+        {
+            char auth_header[1024];
+            snprintf(auth_header, sizeof(auth_header), "%s: %s",
+                     host->api_key_name, api_key);
+            headers = curl_slist_append(headers, auth_header);
+            free(api_key);
+        }
+        else
+        {
+            response->error_message = strdup("Failed to decrypt API key");
+            curl_easy_cleanup(curl);
+            curl_mime_free(mime);
+            return response;
+        }
+    }
 
     curl_easy_setopt(curl, CURLOPT_URL, host->api_endpoint);
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
