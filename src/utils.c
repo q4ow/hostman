@@ -315,8 +315,8 @@ print_version_info(void)
     printf("\033[1;33mPlatform:\033[0m    Unknown\n");
 #endif
 
-    printf("\n\033[1;37mMaintained by:\033[0m  %s\n", HOSTMAN_AUTHOR);
-    printf("\033[1;37mRepository:\033[0m     %s\n\n", HOSTMAN_HOMEPAGE);
+    printf("\n\033[1;37mMaintainer:\033[0m  %s\n", HOSTMAN_AUTHOR);
+    printf("\033[1;37mRepository:\033[0m  %s\n\n", HOSTMAN_HOMEPAGE);
 
     printf("\033[0;37mLicensed under MIT License.\033[0m\n");
 }
