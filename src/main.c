@@ -1,16 +1,25 @@
 #include "cli.h"
 #include "config.h"
 #include "database.h"
+#include "encryption.h"
 #include "logging.h"
 #include "network.h"
-#include "encryption.h"
+#include "utils.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
+    if (argc > 1 && (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-v") == 0))
+    {
+        print_version_info();
+        return EXIT_SUCCESS;
+    }
+
     logging_init();
 
     char *config_path = config_get_path();

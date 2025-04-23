@@ -6,14 +6,14 @@
 #include "network.h"
 #include "utils.h"
 #include <getopt.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <stdarg.h>
+#include <time.h>
+#include <unistd.h>
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
@@ -22,12 +22,15 @@
 #define EXIT_FILE_ERROR 4
 #define EXIT_CONFIG_ERROR 5
 
-void print_section_header(const char *text)
+void
+print_section_header(const char *text)
 {
-    printf("\033[1;36m┌─ %s ───────────────────────────────────────────────────────────┐\033[0m\n", text);
+    printf("\033[1;36m┌─ %s ───────────────────────────────────────────────────────────┐\033[0m\n",
+           text);
 }
 
-void print_success(const char *format, ...)
+void
+print_success(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -37,7 +40,8 @@ void print_success(const char *format, ...)
     va_end(args);
 }
 
-void print_error(const char *format, ...)
+void
+print_error(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -47,7 +51,8 @@ void print_error(const char *format, ...)
     va_end(args);
 }
 
-void print_info(const char *format, ...)
+void
+print_info(const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -57,17 +62,20 @@ void print_info(const char *format, ...)
     va_end(args);
 }
 
-void print_command_syntax(const char *command, const char *args)
+void
+print_command_syntax(const char *command, const char *args)
 {
     printf("  \033[1;33m%s\033[0m %s\n", command, args);
 }
 
-void print_option(const char *option, const char *description)
+void
+print_option(const char *option, const char *description)
 {
     printf("  \033[1;35m%-20s\033[0m %s\n", option, description);
 }
 
-void print_command_help(const char *command)
+void
+print_command_help(const char *command)
 {
     printf("\n");
 
@@ -79,16 +87,25 @@ void print_command_help(const char *command)
         print_section_header("USAGE  ");
         printf("  hostman <command> [options]\n\n");
 
+        print_section_header("GENERAL OPTIONS");
+        print_option("--version, -v", "Display version information");
+        print_option("--help, -h", "Display this help message");
+        printf("\n");
+
         print_section_header("COMMANDS");
-        print_command_syntax("upload", "<file_path>"), printf("   Upload a file to a hosting service\n");
+        print_command_syntax("upload", "<file_path>"),
+          printf("   Upload a file to a hosting service\n");
         print_command_syntax("list-uploads", ""), printf("   List upload history\n");
-        print_command_syntax("delete-upload", "<id>"), printf("   Delete an upload record from history\n");
-        print_command_syntax("delete-file", "<id>"), printf("   Delete a file from the remote host\n");
+        print_command_syntax("delete-upload", "<id>"),
+          printf("   Delete an upload record from history\n");
+        print_command_syntax("delete-file", "<id>"),
+          printf("   Delete a file from the remote host\n");
         print_command_syntax("list-hosts", ""), printf("   List configured hosts\n");
         print_command_syntax("add-host", ""), printf("   Add a new host configuration\n");
         print_command_syntax("remove-host", "<name>"), printf("   Remove a host configuration\n");
         print_command_syntax("set-default-host", "<name>"), printf("   Set the default host\n");
-        print_command_syntax("config", "<get|set> <key> [value]"), printf("   View or modify configuration\n");
+        print_command_syntax("config", "<get|set> <key> [value]"),
+          printf("   View or modify configuration\n");
         print_command_syntax("help", "[command]"), printf("   Show help for a specific command\n");
 
         printf("\nFor more information about a specific command, run: hostman help <command>\n");
@@ -104,7 +121,8 @@ void print_command_help(const char *command)
         printf("  hostman upload [options] <file_path>\n\n");
 
         print_section_header("OPTIONS");
-        print_option("--host <name>", "Specify which host to use. If not provided, the default host will be used");
+        print_option("--host <name>",
+                     "Specify which host to use. If not provided, the default host will be used");
         print_option("--help", "Show this help message");
         return;
     }
@@ -224,9 +242,10 @@ void print_command_help(const char *command)
     printf("Run 'hostman help' for a list of available commands.\n");
 }
 
-command_args_t parse_args(int argc, char *argv[])
+command_args_t
+parse_args(int argc, char *argv[])
 {
-    command_args_t args = {0};
+    command_args_t args = { 0 };
     args.type = CMD_UNKNOWN;
     args.page = 1;
     args.limit = 20;
@@ -249,9 +268,7 @@ command_args_t parse_args(int argc, char *argv[])
     {
         args.type = CMD_LIST_HOSTS;
 
-        static struct option long_options[] = {
-            {"help", no_argument, 0, '?'},
-            {0, 0, 0, 0}};
+        static struct option long_options[] = { { "help", no_argument, 0, '?' }, { 0, 0, 0, 0 } };
 
         int option_index = 0;
         int c;
@@ -261,11 +278,11 @@ command_args_t parse_args(int argc, char *argv[])
         {
             switch (c)
             {
-            case '?':
-                print_command_help("list-hosts");
-                exit(EXIT_SUCCESS);
-            default:
-                break;
+                case '?':
+                    print_command_help("list-hosts");
+                    exit(EXIT_SUCCESS);
+                default:
+                    break;
             }
         }
     }
@@ -273,9 +290,7 @@ command_args_t parse_args(int argc, char *argv[])
     {
         args.type = CMD_DELETE_UPLOAD;
 
-        static struct option long_options[] = {
-            {"help", no_argument, 0, '?'},
-            {0, 0, 0, 0}};
+        static struct option long_options[] = { { "help", no_argument, 0, '?' }, { 0, 0, 0, 0 } };
 
         int option_index = 0;
         int c;
@@ -285,11 +300,11 @@ command_args_t parse_args(int argc, char *argv[])
         {
             switch (c)
             {
-            case '?':
-                print_command_help("delete-upload");
-                exit(EXIT_SUCCESS);
-            default:
-                break;
+                case '?':
+                    print_command_help("delete-upload");
+                    exit(EXIT_SUCCESS);
+                default:
+                    break;
             }
         }
 
@@ -312,9 +327,7 @@ command_args_t parse_args(int argc, char *argv[])
     {
         args.type = CMD_DELETE_FILE;
 
-        static struct option long_options[] = {
-            {"help", no_argument, 0, '?'},
-            {0, 0, 0, 0}};
+        static struct option long_options[] = { { "help", no_argument, 0, '?' }, { 0, 0, 0, 0 } };
 
         int option_index = 0;
         int c;
@@ -324,11 +337,11 @@ command_args_t parse_args(int argc, char *argv[])
         {
             switch (c)
             {
-            case '?':
-                print_command_help("delete-file");
-                exit(EXIT_SUCCESS);
-            default:
-                break;
+                case '?':
+                    print_command_help("delete-file");
+                    exit(EXIT_SUCCESS);
+                default:
+                    break;
             }
         }
 
@@ -363,7 +376,8 @@ command_args_t parse_args(int argc, char *argv[])
     {
         args.type = CMD_CONFIG;
     }
-    else if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0)
+    else if (strcmp(argv[1], "help") == 0 || strcmp(argv[1], "--help") == 0 ||
+             strcmp(argv[1], "-h") == 0)
     {
         args.type = CMD_HELP;
         if (argc > 2)
@@ -384,164 +398,168 @@ command_args_t parse_args(int argc, char *argv[])
 
     switch (args.type)
     {
-    case CMD_UPLOAD:
-    {
-        static struct option long_options[] = {
-            {"host", required_argument, 0, 'h'},
-            {"help", no_argument, 0, '?'},
-            {0, 0, 0, 0}};
-
-        int option_index = 0;
-        int c;
-        optind = 2;
-
-        while ((c = getopt_long(argc, argv, "h:", long_options, &option_index)) != -1)
+        case CMD_UPLOAD:
         {
-            switch (c)
+            static struct option long_options[] = { { "host", required_argument, 0, 'h' },
+                                                    { "help", no_argument, 0, '?' },
+                                                    { 0, 0, 0, 0 } };
+
+            int option_index = 0;
+            int c;
+            optind = 2;
+
+            while ((c = getopt_long(argc, argv, "h:", long_options, &option_index)) != -1)
             {
-            case 'h':
-                args.host_name = strdup(optarg);
-                break;
-            case '?':
-                print_command_help("upload");
-                exit(EXIT_SUCCESS);
-            default:
-                break;
-            }
-        }
-
-        if (optind < argc)
-        {
-            args.file_path = strdup(argv[optind]);
-        }
-        else
-        {
-            print_error("Error: File path required\n");
-            args.type = CMD_UNKNOWN;
-        }
-        break;
-    }
-
-    case CMD_LIST_UPLOADS:
-    {
-        static struct option long_options[] = {
-            {"host", required_argument, 0, 'h'},
-            {"page", required_argument, 0, 'p'},
-            {"limit", required_argument, 0, 'l'},
-            {"help", no_argument, 0, '?'},
-            {0, 0, 0, 0}};
-
-        int option_index = 0;
-        int c;
-        optind = 2;
-
-        while ((c = getopt_long(argc, argv, "h:p:l:", long_options, &option_index)) != -1)
-        {
-            switch (c)
-            {
-            case 'h':
-                args.host_name = strdup(optarg);
-                break;
-            case 'p':
-                args.page = atoi(optarg);
-                if (args.page < 1)
-                    args.page = 1;
-                break;
-            case 'l':
-                args.limit = atoi(optarg);
-                if (args.limit < 1)
-                    args.limit = 1;
-                break;
-            case '?':
-                print_command_help("list-uploads");
-                exit(EXIT_SUCCESS);
-            default:
-                break;
-            }
-        }
-        break;
-    }
-
-    case CMD_LIST_HOSTS:
-    {
-        break;
-    }
-
-    case CMD_ADD_HOST:
-    {
-        break;
-    }
-
-    case CMD_REMOVE_HOST:
-    {
-        optind = 2;
-        if (optind < argc)
-        {
-            args.host_name = strdup(argv[optind]);
-        }
-        else
-        {
-            print_error("Error: Host name required\n");
-            args.type = CMD_UNKNOWN;
-        }
-        break;
-    }
-
-    case CMD_SET_DEFAULT_HOST:
-    {
-        optind = 2;
-        if (optind < argc)
-        {
-            args.host_name = strdup(argv[optind]);
-        }
-        else
-        {
-            print_error("Error: Host name required\n");
-            args.type = CMD_UNKNOWN;
-        }
-        break;
-    }
-
-    case CMD_CONFIG:
-    {
-        optind = 2;
-        if (optind < argc)
-        {
-            if (strcmp(argv[optind], "get") == 0)
-            {
-                args.config_get = true;
-                optind++;
-                if (optind < argc)
+                switch (c)
                 {
-                    args.config_key = strdup(argv[optind]);
-                }
-                else
-                {
-                    print_error("Error: Key required for 'config get'\n");
-                    args.type = CMD_UNKNOWN;
+                    case 'h':
+                        args.host_name = strdup(optarg);
+                        break;
+                    case '?':
+                        print_command_help("upload");
+                        exit(EXIT_SUCCESS);
+                    default:
+                        break;
                 }
             }
-            else if (strcmp(argv[optind], "set") == 0)
+
+            if (optind < argc)
             {
-                args.config_get = false;
-                optind++;
-                if (optind < argc)
+                args.file_path = strdup(argv[optind]);
+            }
+            else
+            {
+                print_error("Error: File path required\n");
+                args.type = CMD_UNKNOWN;
+            }
+            break;
+        }
+
+        case CMD_LIST_UPLOADS:
+        {
+            static struct option long_options[] = { { "host", required_argument, 0, 'h' },
+                                                    { "page", required_argument, 0, 'p' },
+                                                    { "limit", required_argument, 0, 'l' },
+                                                    { "help", no_argument, 0, '?' },
+                                                    { 0, 0, 0, 0 } };
+
+            int option_index = 0;
+            int c;
+            optind = 2;
+
+            while ((c = getopt_long(argc, argv, "h:p:l:", long_options, &option_index)) != -1)
+            {
+                switch (c)
                 {
-                    args.config_key = strdup(argv[optind]);
+                    case 'h':
+                        args.host_name = strdup(optarg);
+                        break;
+                    case 'p':
+                        args.page = atoi(optarg);
+                        if (args.page < 1)
+                            args.page = 1;
+                        break;
+                    case 'l':
+                        args.limit = atoi(optarg);
+                        if (args.limit < 1)
+                            args.limit = 1;
+                        break;
+                    case '?':
+                        print_command_help("list-uploads");
+                        exit(EXIT_SUCCESS);
+                    default:
+                        break;
+                }
+            }
+            break;
+        }
+
+        case CMD_LIST_HOSTS:
+        {
+            break;
+        }
+
+        case CMD_ADD_HOST:
+        {
+            break;
+        }
+
+        case CMD_REMOVE_HOST:
+        {
+            optind = 2;
+            if (optind < argc)
+            {
+                args.host_name = strdup(argv[optind]);
+            }
+            else
+            {
+                print_error("Error: Host name required\n");
+                args.type = CMD_UNKNOWN;
+            }
+            break;
+        }
+
+        case CMD_SET_DEFAULT_HOST:
+        {
+            optind = 2;
+            if (optind < argc)
+            {
+                args.host_name = strdup(argv[optind]);
+            }
+            else
+            {
+                print_error("Error: Host name required\n");
+                args.type = CMD_UNKNOWN;
+            }
+            break;
+        }
+
+        case CMD_CONFIG:
+        {
+            optind = 2;
+            if (optind < argc)
+            {
+                if (strcmp(argv[optind], "get") == 0)
+                {
+                    args.config_get = true;
                     optind++;
                     if (optind < argc)
                     {
-                        args.config_value = strdup(argv[optind]);
+                        args.config_key = strdup(argv[optind]);
                     }
                     else
                     {
-                        print_error("Error: Value required for 'config set'\n");
+                        print_error("Error: Key required for 'config get'\n");
+                        args.type = CMD_UNKNOWN;
+                    }
+                }
+                else if (strcmp(argv[optind], "set") == 0)
+                {
+                    args.config_get = false;
+                    optind++;
+                    if (optind < argc)
+                    {
+                        args.config_key = strdup(argv[optind]);
+                        optind++;
+                        if (optind < argc)
+                        {
+                            args.config_value = strdup(argv[optind]);
+                        }
+                        else
+                        {
+                            print_error("Error: Value required for 'config set'\n");
+                            args.type = CMD_UNKNOWN;
+                        }
+                    }
+                    else
+                    {
+                        print_error("Error: Key required for 'config set'\n");
                         args.type = CMD_UNKNOWN;
                     }
                 }
                 else
                 {
-                    print_error("Error: Key required for 'config set'\n");
+                    print_error("Error: 'config' requires 'get' or 'set' subcommand\n");
                     args.type = CMD_UNKNOWN;
                 }
             }
@@ -550,561 +568,572 @@ command_args_t parse_args(int argc, char *argv[])
                 print_error("Error: 'config' requires 'get' or 'set' subcommand\n");
                 args.type = CMD_UNKNOWN;
             }
+            break;
         }
-        else
-        {
-            print_error("Error: 'config' requires 'get' or 'set' subcommand\n");
-            args.type = CMD_UNKNOWN;
-        }
-        break;
-    }
 
-    default:
-        break;
+        default:
+            break;
     }
 
     return args;
 }
 
-int execute_command(command_args_t *args)
+int
+execute_command(command_args_t *args)
 {
     switch (args->type)
     {
-    case CMD_UPLOAD:
-    {
-        hostman_config_t *config = config_load();
-        if (!config)
+        case CMD_UPLOAD:
         {
-            log_error("Failed to load configuration");
-            return EXIT_CONFIG_ERROR;
-        }
-
-        host_config_t *host = NULL;
-        if (args->host_name)
-        {
-            host = config_get_host(args->host_name);
-            if (!host)
+            hostman_config_t *config = config_load();
+            if (!config)
             {
-                print_error("Error: Host '%s' not found\n", args->host_name);
-                config_free(config);
-                return EXIT_INVALID_ARGS;
-            }
-        }
-        else
-        {
-            host = config_get_default_host();
-            if (!host)
-            {
-                print_error("Error: No default host configured\n");
-                config_free(config);
+                log_error("Failed to load configuration");
                 return EXIT_CONFIG_ERROR;
             }
-        }
 
-        upload_response_t *response = network_upload_file(args->file_path, host);
-        if (!response)
-        {
-            print_error("Error: Upload failed\n");
-            config_free(config);
-            return EXIT_NETWORK_ERROR;
-        }
-
-        if (response->success)
-        {
-            print_section_header("UPLOAD SUCCESSFUL");
-
-            char *filename = get_filename_from_path(args->file_path);
-            struct stat file_stat;
-            stat(args->file_path, &file_stat);
-
-            char size_str[32];
-            format_file_size(file_stat.st_size, size_str, sizeof(size_str));
-
-            print_info("  File: %s (%s)\n", filename, size_str);
-            print_info("  Host: %s\n", host->name);
-
-            double time_ms = response->request_time_ms;
-            char time_str[32];
-            if (time_ms < 1000)
+            host_config_t *host = NULL;
+            if (args->host_name)
             {
-                snprintf(time_str, sizeof(time_str), "%.2f ms", time_ms);
-            }
-            else
-            {
-                snprintf(time_str, sizeof(time_str), "%.2f sec", time_ms / 1000.0);
-            }
-            print_info("  Request time: %s\n", time_str);
-
-            printf("\n\033[1;32m%s\033[0m\n", response->url);
-
-            if (response->deletion_url)
-            {
-                printf("\n\033[1;33mDeletion URL: %s\033[0m\n", response->deletion_url);
-                print_info("  Save this URL to delete the file later\n");
-            }
-            printf("\n");
-
-            const char *clipboard_manager = get_clipboard_manager_name();
-            if (clipboard_manager && copy_to_clipboard(response->url))
-            {
-                print_success("✓ URL copied to clipboard using %s\n", clipboard_manager);
-            }
-
-            db_add_upload(host->name, args->file_path, response->url,
-                          response->deletion_url, filename, file_stat.st_size);
-
-            free(filename);
-            network_free_response(response);
-            config_free(config);
-            return EXIT_SUCCESS;
-        }
-        else
-        {
-            print_error("Error: %s\n", response->error_message);
-            network_free_response(response);
-            config_free(config);
-            return EXIT_NETWORK_ERROR;
-        }
-    }
-
-    case CMD_LIST_UPLOADS:
-    {
-        int count = 0;
-        upload_record_t **records = db_get_uploads(args->host_name, args->page, args->limit, &count);
-
-        if (!records)
-        {
-            print_error("Error: Failed to retrieve upload records\n");
-            return EXIT_FAILURE;
-        }
-
-        if (count == 0)
-        {
-            print_info("No upload records found.\n");
-            db_free_records(records, count);
-            return EXIT_SUCCESS;
-        }
-
-        print_section_header("UPLOAD HISTORY");
-
-        if (args->host_name)
-        {
-            print_info("Host: %s\n\n", args->host_name);
-        }
-
-        printf("\033[1m%-20s %-15s %-35s %s\033[0m\n",
-               "Date", "Host", "Filename", "URL");
-        printf("%-20s %-15s %-35s %s\n",
-               "--------------------", "---------------",
-               "-----------------------------------",
-               "----------------------------------------------------");
-
-        for (int i = 0; i < count; i++)
-        {
-            char time_str[21];
-            struct tm *tm_info = localtime(&records[i]->timestamp);
-            strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-
-            char filename_display[36] = {0};
-            if (strlen(records[i]->filename) > 34)
-            {
-                strncpy(filename_display, records[i]->filename, 31);
-                strcat(filename_display, "...");
-            }
-            else
-            {
-                strcpy(filename_display, records[i]->filename);
-            }
-
-            printf("%-20s \033[0;36m%-15s\033[0m %-35s \033[0;32m%s\033[0m",
-                   time_str,
-                   records[i]->host_name,
-                   filename_display,
-                   records[i]->remote_url);
-
-            if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
-            {
-                printf(" \033[1;33m[ID: %d]\033[0m", records[i]->id);
-            }
-            printf("\n");
-        }
-
-        printf("\n\033[1mPage %d, showing %d record(s)\033[0m\n", args->page, count);
-
-        bool has_deletion_urls = false;
-        for (int i = 0; i < count; i++)
-        {
-            if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
-            {
-                has_deletion_urls = true;
-                break;
-            }
-        }
-
-        if (has_deletion_urls)
-        {
-            printf("\nRecords marked with \033[1;33m[ID: X]\033[0m have deletion URLs.\n");
-            printf("Use the following command to view and use deletion URLs:\n");
-            printf("  hostman delete-file <id>\n");
-        }
-
-        db_free_records(records, count);
-        return EXIT_SUCCESS;
-    }
-
-    case CMD_LIST_HOSTS:
-    {
-        hostman_config_t *config = config_load();
-        if (!config)
-        {
-            log_error("Failed to load configuration");
-            return EXIT_CONFIG_ERROR;
-        }
-
-        if (config->host_count == 0)
-        {
-            print_info("No hosts configured.\n");
-            config_free(config);
-            return EXIT_SUCCESS;
-        }
-
-        print_section_header("CONFIGURED HOSTS");
-
-        printf("\033[1m%-20s %-40s %s\033[0m\n",
-               "Name", "API Endpoint", "Default");
-        printf("%-20s %-40s %s\n",
-               "--------------------",
-               "----------------------------------------",
-               "-------");
-
-        for (int i = 0; i < config->host_count; i++)
-        {
-            const bool is_default = (config->default_host && strcmp(config->default_host, config->hosts[i]->name) == 0);
-
-            printf("\033[0;36m%-20s\033[0m %-40s %s\n",
-                   config->hosts[i]->name,
-                   config->hosts[i]->api_endpoint,
-                   is_default ? "\033[1;32m✓ Yes\033[0m" : "No");
-        }
-
-        config_free(config);
-        return EXIT_SUCCESS;
-    }
-
-    case CMD_ADD_HOST:
-    {
-        return hosts_add_interactive();
-    }
-
-    case CMD_REMOVE_HOST:
-    {
-        if (!args->host_name)
-        {
-            print_error("Error: Host name required\n");
-            return EXIT_INVALID_ARGS;
-        }
-
-        if (config_remove_host(args->host_name))
-        {
-            print_success("Host '%s' removed successfully.\n", args->host_name);
-            return EXIT_SUCCESS;
-        }
-        else
-        {
-            print_error("Error: Failed to remove host '%s'\n", args->host_name);
-            return EXIT_FAILURE;
-        }
-    }
-
-    case CMD_SET_DEFAULT_HOST:
-    {
-        if (!args->host_name)
-        {
-            print_error("Error: Host name required\n");
-            return EXIT_INVALID_ARGS;
-        }
-
-        if (config_set_default_host(args->host_name))
-        {
-            print_success("Default host set to '%s'.\n", args->host_name);
-            return EXIT_SUCCESS;
-        }
-        else
-        {
-            print_error("Error: Failed to set default host to '%s'\n", args->host_name);
-            return EXIT_FAILURE;
-        }
-    }
-
-    case CMD_CONFIG:
-    {
-        if (args->config_get)
-        {
-            char *value = config_get_value(args->config_key);
-            if (value)
-            {
-                print_success("%s\n", value);
-                free(value);
-                return EXIT_SUCCESS;
-            }
-            else
-            {
-                print_error("Error: Failed to get configuration value for '%s'\n", args->config_key);
-                return EXIT_FAILURE;
-            }
-        }
-        else
-        {
-            if (config_set_value(args->config_key, args->config_value))
-            {
-                print_success("Configuration value '%s' set to '%s'.\n", args->config_key, args->config_value);
-                return EXIT_SUCCESS;
-            }
-            else
-            {
-                print_error("Error: Failed to set configuration value for '%s'\n", args->config_key);
-                return EXIT_FAILURE;
-            }
-        }
-    }
-
-    case CMD_DELETE_UPLOAD:
-    {
-        if (args->upload_id <= 0)
-        {
-            print_error("Error: Invalid upload ID\n");
-            return EXIT_INVALID_ARGS;
-        }
-
-        int count = 0;
-        upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
-        bool found = false;
-
-        if (records)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (records[i]->id == args->upload_id)
+                host = config_get_host(args->host_name);
+                if (!host)
                 {
-                    found = true;
-                    printf("Delete the following record?\n\n");
-
-                    char time_str[21];
-                    struct tm *tm_info = localtime(&records[i]->timestamp);
-                    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-
-                    char size_str[32];
-                    format_file_size(records[i]->size, size_str, sizeof(size_str));
-
-                    print_info("ID: %d\n", records[i]->id);
-                    print_info("Date: %s\n", time_str);
-                    print_info("Host: %s\n", records[i]->host_name);
-                    print_info("File: %s (%s)\n", records[i]->filename, size_str);
-                    print_info("URL: %s\n\n", records[i]->remote_url);
-
-                    break;
+                    print_error("Error: Host '%s' not found\n", args->host_name);
+                    config_free(config);
+                    return EXIT_INVALID_ARGS;
                 }
             }
-            db_free_records(records, count);
-        }
-
-        if (!found)
-        {
-            print_error("Error: No upload record found with ID %d\n", args->upload_id);
-            return EXIT_FAILURE;
-        }
-
-        char response[10];
-        printf("Are you sure you want to delete this record? [y/N]: ");
-        if (fgets(response, sizeof(response), stdin) == NULL)
-        {
-            print_error("Error reading response\n");
-            return EXIT_FAILURE;
-        }
-
-        if (response[0] == 'y' || response[0] == 'Y')
-        {
-            if (db_delete_upload(args->upload_id))
-            {
-                print_success("Upload record deleted successfully.\n");
-                return EXIT_SUCCESS;
-            }
             else
             {
-                print_error("Error: Failed to delete upload record.\n");
-                return EXIT_FAILURE;
-            }
-        }
-        else
-        {
-            print_info("Delete operation cancelled.\n");
-            return EXIT_SUCCESS;
-        }
-    }
-
-    case CMD_DELETE_FILE:
-    {
-        if (args->upload_id <= 0)
-        {
-            print_error("Error: Invalid upload ID\n");
-            return EXIT_INVALID_ARGS;
-        }
-
-        int count = 0;
-        upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
-        bool found = false;
-        char *deletion_url = NULL;
-        upload_record_t *record = NULL;
-
-        if (records)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (records[i]->id == args->upload_id)
+                host = config_get_default_host();
+                if (!host)
                 {
-                    found = true;
-                    record = records[i];
-
-                    if (!record->deletion_url || strlen(record->deletion_url) == 0)
-                    {
-                        print_error("Error: This upload doesn't have a deletion URL\n");
-                        db_free_records(records, count);
-                        return EXIT_FAILURE;
-                    }
-
-                    deletion_url = strdup(record->deletion_url);
-
-                    printf("Delete the following file from the remote host?\n\n");
-
-                    char time_str[21];
-                    struct tm *tm_info = localtime(&record->timestamp);
-                    strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-
-                    char size_str[32];
-                    format_file_size(record->size, size_str, sizeof(size_str));
-
-                    print_info("ID: %d\n", record->id);
-                    print_info("Date: %s\n", time_str);
-                    print_info("Host: %s\n", record->host_name);
-                    print_info("File: %s (%s)\n", record->filename, size_str);
-                    print_info("URL: %s\n", record->remote_url);
-                    print_info("Deletion URL: %s\n\n", record->deletion_url);
-                    break;
+                    print_error("Error: No default host configured\n");
+                    config_free(config);
+                    return EXIT_CONFIG_ERROR;
                 }
             }
-        }
 
-        if (!found || !deletion_url)
-        {
-            print_error("Error: No upload record found with ID %d\n", args->upload_id);
-            if (records)
-                db_free_records(records, count);
-            return EXIT_FAILURE;
-        }
-
-        char response[10];
-        printf("Are you sure you want to delete this file from the remote host? [y/N]: ");
-        if (fgets(response, sizeof(response), stdin) == NULL)
-        {
-            print_error("Error reading response\n");
-            if (records)
-                db_free_records(records, count);
-            free(deletion_url);
-            return EXIT_FAILURE;
-        }
-
-        if (response[0] != 'y' && response[0] != 'Y')
-        {
-            print_info("Delete operation cancelled.\n");
-            if (records)
-                db_free_records(records, count);
-            free(deletion_url);
-            return EXIT_SUCCESS;
-        }
-
-        CURL *curl;
-        CURLcode res;
-
-        curl = curl_easy_init();
-        if (!curl)
-        {
-            print_error("Error: Failed to initialize cURL\n");
-            if (records)
-                db_free_records(records, count);
-            free(deletion_url);
-            return EXIT_NETWORK_ERROR;
-        }
-
-        print_info("Sending deletion request...\n");
-
-        curl_easy_setopt(curl, CURLOPT_URL, deletion_url);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
-
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK)
-        {
-            print_error("Error: %s\n", curl_easy_strerror(res));
-            curl_easy_cleanup(curl);
-            if (records)
-                db_free_records(records, count);
-            free(deletion_url);
-            return EXIT_NETWORK_ERROR;
-        }
-
-        long http_code = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
-
-        curl_easy_cleanup(curl);
-        free(deletion_url);
-
-        bool success = (http_code >= 200 && http_code < 300);
-
-        if (success)
-        {
-            print_success("File deleted successfully from the remote host!\n");
-
-            char confirm[10];
-            printf("Do you want to remove the record from the local database too? [y/N]: ");
-            if (fgets(confirm, sizeof(confirm), stdin) != NULL &&
-                (confirm[0] == 'y' || confirm[0] == 'Y'))
+            upload_response_t *response = network_upload_file(args->file_path, host);
+            if (!response)
             {
-                if (db_delete_upload(args->upload_id))
+                print_error("Error: Upload failed\n");
+                config_free(config);
+                return EXIT_NETWORK_ERROR;
+            }
+
+            if (response->success)
+            {
+                print_section_header("UPLOAD SUCCESSFUL");
+
+                char *filename = get_filename_from_path(args->file_path);
+                struct stat file_stat;
+                stat(args->file_path, &file_stat);
+
+                char size_str[32];
+                format_file_size(file_stat.st_size, size_str, sizeof(size_str));
+
+                print_info("  File: %s (%s)\n", filename, size_str);
+                print_info("  Host: %s\n", host->name);
+
+                double time_ms = response->request_time_ms;
+                char time_str[32];
+                if (time_ms < 1000)
                 {
-                    print_success("Upload record deleted from local database.\n");
+                    snprintf(time_str, sizeof(time_str), "%.2f ms", time_ms);
                 }
                 else
                 {
-                    print_error("Failed to delete upload record from local database.\n");
+                    snprintf(time_str, sizeof(time_str), "%.2f sec", time_ms / 1000.0);
+                }
+                print_info("  Request time: %s\n", time_str);
+
+                printf("\n\033[1;32m%s\033[0m\n", response->url);
+
+                if (response->deletion_url)
+                {
+                    printf("\n\033[1;33mDeletion URL: %s\033[0m\n", response->deletion_url);
+                    print_info("  Save this URL to delete the file later\n");
+                }
+                printf("\n");
+
+                const char *clipboard_manager = get_clipboard_manager_name();
+                if (clipboard_manager && copy_to_clipboard(response->url))
+                {
+                    print_success("✓ URL copied to clipboard using %s\n", clipboard_manager);
+                }
+
+                db_add_upload(host->name,
+                              args->file_path,
+                              response->url,
+                              response->deletion_url,
+                              filename,
+                              file_stat.st_size);
+
+                free(filename);
+                network_free_response(response);
+                config_free(config);
+                return EXIT_SUCCESS;
+            }
+            else
+            {
+                print_error("Error: %s\n", response->error_message);
+                network_free_response(response);
+                config_free(config);
+                return EXIT_NETWORK_ERROR;
+            }
+        }
+
+        case CMD_LIST_UPLOADS:
+        {
+            int count = 0;
+            upload_record_t **records =
+              db_get_uploads(args->host_name, args->page, args->limit, &count);
+
+            if (!records)
+            {
+                print_error("Error: Failed to retrieve upload records\n");
+                return EXIT_FAILURE;
+            }
+
+            if (count == 0)
+            {
+                print_info("No upload records found.\n");
+                db_free_records(records, count);
+                return EXIT_SUCCESS;
+            }
+
+            print_section_header("UPLOAD HISTORY");
+
+            if (args->host_name)
+            {
+                print_info("Host: %s\n\n", args->host_name);
+            }
+
+            printf(
+              "\033[1m%-3s %-20s %-15s %-35s %s\033[0m\n", "ID", "Date", "Host", "Filename", "URL");
+            printf("%-3s %-20s %-15s %-35s %s\n",
+                   "---",
+                   "--------------------",
+                   "---------------",
+                   "-----------------------------------",
+                   "----------------------------------------------------");
+
+            for (int i = 0; i < count; i++)
+            {
+                char time_str[21];
+                struct tm *tm_info = localtime(&records[i]->timestamp);
+                strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+                char filename_display[36] = { 0 };
+                if (strlen(records[i]->filename) > 34)
+                {
+                    strncpy(filename_display, records[i]->filename, 31);
+                    strcat(filename_display, "...");
+                }
+                else
+                {
+                    strcpy(filename_display, records[i]->filename);
+                }
+
+                printf(
+                  "%-3d \033[0;37m%-20s\033[0m \033[0;36m%-15s\033[0m %-35s \033[0;32m%s\033[0m",
+                  records[i]->id,
+                  time_str,
+                  records[i]->host_name,
+                  filename_display,
+                  records[i]->remote_url);
+
+                if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
+                {
+                    printf(" \033[1;33m[D]\033[0m");
+                }
+                printf("\n");
+            }
+
+            printf("\n\033[1mPage %d, showing %d record(s)\033[0m\n", args->page, count);
+
+            bool has_deletion_urls = false;
+            for (int i = 0; i < count; i++)
+            {
+                if (records[i]->deletion_url && strlen(records[i]->deletion_url) > 0)
+                {
+                    has_deletion_urls = true;
+                    break;
+                }
+            }
+
+            if (has_deletion_urls)
+            {
+                printf("\nRecords marked with \033[1;33m[D]\033[0m have deletion URLs.\n");
+                printf("Use the following command to view and use deletion URLs:\n");
+                printf("  hostman delete-file <id>\n");
+            }
+
+            db_free_records(records, count);
+            return EXIT_SUCCESS;
+        }
+
+        case CMD_LIST_HOSTS:
+        {
+            hostman_config_t *config = config_load();
+            if (!config)
+            {
+                log_error("Failed to load configuration");
+                return EXIT_CONFIG_ERROR;
+            }
+
+            if (config->host_count == 0)
+            {
+                print_info("No hosts configured.\n");
+                config_free(config);
+                return EXIT_SUCCESS;
+            }
+
+            print_section_header("CONFIGURED HOSTS");
+
+            printf("\033[1m%-20s %-40s %s\033[0m\n", "Name", "API Endpoint", "Default");
+            printf("%-20s %-40s %s\n",
+                   "--------------------",
+                   "----------------------------------------",
+                   "-------");
+
+            for (int i = 0; i < config->host_count; i++)
+            {
+                const bool is_default = (config->default_host &&
+                                         strcmp(config->default_host, config->hosts[i]->name) == 0);
+
+                printf("\033[0;36m%-20s\033[0m %-40s %s\n",
+                       config->hosts[i]->name,
+                       config->hosts[i]->api_endpoint,
+                       is_default ? "\033[1;32m✓ Yes\033[0m" : "No");
+            }
+
+            config_free(config);
+            return EXIT_SUCCESS;
+        }
+
+        case CMD_ADD_HOST:
+        {
+            return hosts_add_interactive();
+        }
+
+        case CMD_REMOVE_HOST:
+        {
+            if (!args->host_name)
+            {
+                print_error("Error: Host name required\n");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (config_remove_host(args->host_name))
+            {
+                print_success("Host '%s' removed successfully.\n", args->host_name);
+                return EXIT_SUCCESS;
+            }
+            else
+            {
+                print_error("Error: Failed to remove host '%s'\n", args->host_name);
+                return EXIT_FAILURE;
+            }
+        }
+
+        case CMD_SET_DEFAULT_HOST:
+        {
+            if (!args->host_name)
+            {
+                print_error("Error: Host name required\n");
+                return EXIT_INVALID_ARGS;
+            }
+
+            if (config_set_default_host(args->host_name))
+            {
+                print_success("Default host set to '%s'.\n", args->host_name);
+                return EXIT_SUCCESS;
+            }
+            else
+            {
+                print_error("Error: Failed to set default host to '%s'\n", args->host_name);
+                return EXIT_FAILURE;
+            }
+        }
+
+        case CMD_CONFIG:
+        {
+            if (args->config_get)
+            {
+                char *value = config_get_value(args->config_key);
+                if (value)
+                {
+                    print_success("%s\n", value);
+                    free(value);
+                    return EXIT_SUCCESS;
+                }
+                else
+                {
+                    print_error("Error: Failed to get configuration value for '%s'\n",
+                                args->config_key);
+                    return EXIT_FAILURE;
+                }
+            }
+            else
+            {
+                if (config_set_value(args->config_key, args->config_value))
+                {
+                    print_success("Configuration value '%s' set to '%s'.\n",
+                                  args->config_key,
+                                  args->config_value);
+                    return EXIT_SUCCESS;
+                }
+                else
+                {
+                    print_error("Error: Failed to set configuration value for '%s'\n",
+                                args->config_key);
+                    return EXIT_FAILURE;
                 }
             }
         }
-        else
+
+        case CMD_DELETE_UPLOAD:
         {
-            print_error("Failed to delete file. HTTP status code: %ld\n", http_code);
-            print_info("The file server might require a specific request method or additional parameters.\n");
-            print_info("You can try visiting the deletion URL in your browser: %s\n", record->deletion_url);
+            if (args->upload_id <= 0)
+            {
+                print_error("Error: Invalid upload ID\n");
+                return EXIT_INVALID_ARGS;
+            }
+
+            int count = 0;
+            upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
+            bool found = false;
+
+            if (records)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    if (records[i]->id == args->upload_id)
+                    {
+                        found = true;
+                        printf("Delete the following record?\n\n");
+
+                        char time_str[21];
+                        struct tm *tm_info = localtime(&records[i]->timestamp);
+                        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+                        char size_str[32];
+                        format_file_size(records[i]->size, size_str, sizeof(size_str));
+
+                        print_info("ID: %d\n", records[i]->id);
+                        print_info("Date: %s\n", time_str);
+                        print_info("Host: %s\n", records[i]->host_name);
+                        print_info("File: %s (%s)\n", records[i]->filename, size_str);
+                        print_info("URL: %s\n\n", records[i]->remote_url);
+
+                        break;
+                    }
+                }
+                db_free_records(records, count);
+            }
+
+            if (!found)
+            {
+                print_error("Error: No upload record found with ID %d\n", args->upload_id);
+                return EXIT_FAILURE;
+            }
+
+            char response[10];
+            printf("Are you sure you want to delete this record? [y/N]: ");
+            if (fgets(response, sizeof(response), stdin) == NULL)
+            {
+                print_error("Error reading response\n");
+                return EXIT_FAILURE;
+            }
+
+            if (response[0] == 'y' || response[0] == 'Y')
+            {
+                if (db_delete_upload(args->upload_id))
+                {
+                    print_success("Upload record deleted successfully.\n");
+                    return EXIT_SUCCESS;
+                }
+                else
+                {
+                    print_error("Error: Failed to delete upload record.\n");
+                    return EXIT_FAILURE;
+                }
+            }
+            else
+            {
+                print_info("Delete operation cancelled.\n");
+                return EXIT_SUCCESS;
+            }
         }
 
-        if (records)
-            db_free_records(records, count);
-        return success ? EXIT_SUCCESS : EXIT_NETWORK_ERROR;
-    }
+        case CMD_DELETE_FILE:
+        {
+            if (args->upload_id <= 0)
+            {
+                print_error("Error: Invalid upload ID\n");
+                return EXIT_INVALID_ARGS;
+            }
 
-    case CMD_HELP:
-    {
-        print_command_help(args->command_name);
-        return EXIT_SUCCESS;
-    }
+            int count = 0;
+            upload_record_t **records = db_get_uploads(NULL, 1, 1000, &count);
+            bool found = false;
+            char *deletion_url = NULL;
+            upload_record_t *record = NULL;
 
-    default:
-        return EXIT_INVALID_ARGS;
+            if (records)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    if (records[i]->id == args->upload_id)
+                    {
+                        found = true;
+                        record = records[i];
+
+                        if (!record->deletion_url || strlen(record->deletion_url) == 0)
+                        {
+                            print_error("Error: This upload doesn't have a deletion URL\n");
+                            db_free_records(records, count);
+                            return EXIT_FAILURE;
+                        }
+
+                        deletion_url = strdup(record->deletion_url);
+
+                        printf("Delete the following file from the remote host?\n\n");
+
+                        char time_str[21];
+                        struct tm *tm_info = localtime(&record->timestamp);
+                        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+
+                        char size_str[32];
+                        format_file_size(record->size, size_str, sizeof(size_str));
+
+                        print_info("ID: %d\n", record->id);
+                        print_info("Date: %s\n", time_str);
+                        print_info("Host: %s\n", record->host_name);
+                        print_info("File: %s (%s)\n", record->filename, size_str);
+                        print_info("URL: %s\n", record->remote_url);
+                        print_info("Deletion URL: %s\n\n", record->deletion_url);
+                        break;
+                    }
+                }
+            }
+
+            if (!found || !deletion_url)
+            {
+                print_error("Error: No upload record found with ID %d\n", args->upload_id);
+                if (records)
+                    db_free_records(records, count);
+                return EXIT_FAILURE;
+            }
+
+            char response[10];
+            printf("Are you sure you want to delete this file from the remote host? [y/N]: ");
+            if (fgets(response, sizeof(response), stdin) == NULL)
+            {
+                print_error("Error reading response\n");
+                if (records)
+                    db_free_records(records, count);
+                free(deletion_url);
+                return EXIT_FAILURE;
+            }
+
+            if (response[0] != 'y' && response[0] != 'Y')
+            {
+                print_info("Delete operation cancelled.\n");
+                if (records)
+                    db_free_records(records, count);
+                free(deletion_url);
+                return EXIT_SUCCESS;
+            }
+
+            CURL *curl;
+            CURLcode res;
+
+            curl = curl_easy_init();
+            if (!curl)
+            {
+                print_error("Error: Failed to initialize cURL\n");
+                if (records)
+                    db_free_records(records, count);
+                free(deletion_url);
+                return EXIT_NETWORK_ERROR;
+            }
+
+            print_info("Sending deletion request...\n");
+
+            curl_easy_setopt(curl, CURLOPT_URL, deletion_url);
+            curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+            res = curl_easy_perform(curl);
+
+            if (res != CURLE_OK)
+            {
+                print_error("Error: %s\n", curl_easy_strerror(res));
+                curl_easy_cleanup(curl);
+                if (records)
+                    db_free_records(records, count);
+                free(deletion_url);
+                return EXIT_NETWORK_ERROR;
+            }
+
+            long http_code = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+
+            curl_easy_cleanup(curl);
+            free(deletion_url);
+
+            bool success = (http_code >= 200 && http_code < 300);
+
+            if (success)
+            {
+                print_success("File deleted successfully from the remote host!\n");
+
+                char confirm[10];
+                printf("Do you want to remove the record from the local database too? [y/N]: ");
+                if (fgets(confirm, sizeof(confirm), stdin) != NULL &&
+                    (confirm[0] == 'y' || confirm[0] == 'Y'))
+                {
+                    if (db_delete_upload(args->upload_id))
+                    {
+                        print_success("Upload record deleted from local database.\n");
+                    }
+                    else
+                    {
+                        print_error("Failed to delete upload record from local database.\n");
+                    }
+                }
+            }
+            else
+            {
+                print_error("Failed to delete file. HTTP status code: %ld\n", http_code);
+                print_info("The file server might require a specific request method or additional "
+                           "parameters.\n");
+                print_info("You can try visiting the deletion URL in your browser: %s\n",
+                           record->deletion_url);
+            }
+
+            if (records)
+                db_free_records(records, count);
+            return success ? EXIT_SUCCESS : EXIT_NETWORK_ERROR;
+        }
+
+        case CMD_HELP:
+        {
+            print_command_help(args->command_name);
+            return EXIT_SUCCESS;
+        }
+
+        default:
+            return EXIT_INVALID_ARGS;
     }
 }
 
-int run_setup_wizard(void)
+int
+run_setup_wizard(void)
 {
     print_info("Welcome to Hostman!\n\n");
     print_info("This appears to be your first time running the application.\n");
@@ -1207,7 +1236,8 @@ int run_setup_wizard(void)
     return result;
 }
 
-void free_command_args(command_args_t *args)
+void
+free_command_args(command_args_t *args)
 {
     if (args)
     {

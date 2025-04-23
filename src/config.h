@@ -29,17 +29,28 @@ typedef struct
     int host_count;
 } hostman_config_t;
 
-hostman_config_t *config_load(void);
+hostman_config_t *
+config_load(void);
 
-bool config_save(hostman_config_t *config);
-char *config_get_path(void);
-char *config_get_value(const char *key);
-bool config_set_value(const char *key, const char *value);
-bool config_add_host(host_config_t *host);
-bool config_remove_host(const char *host_name);
-bool config_set_default_host(const char *host_name);
-host_config_t *config_get_default_host(void);
-host_config_t *config_get_host(const char *host_name);
-void config_free(hostman_config_t *config);
+bool
+config_save(hostman_config_t *config);
+char *
+config_get_path(void);
+char *
+config_get_value(const char *key);
+bool
+config_set_value(const char *key, const char *value);
+bool
+config_add_host(host_config_t *host);
+bool
+config_remove_host(const char *host_name);
+bool
+config_set_default_host(const char *host_name);
+host_config_t *
+config_get_default_host(void);
+host_config_t *
+config_get_host(const char *host_name);
+void
+config_free(hostman_config_t *config);
 
 #endif

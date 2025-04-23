@@ -1,19 +1,19 @@
 #include "encryption.h"
+#include "config.h"
 #include "logging.h"
 #include "utils.h"
-#include "config.h"
+#include <fcntl.h>
+#include <openssl/bio.h>
+#include <openssl/buffer.h>
+#include <openssl/conf.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
-#include <openssl/bio.h>
-#include <openssl/buffer.h>
+#include <unistd.h>
 
 // This isnt all that secure but i honestly dont care, its an API key stored in your ~
 
@@ -23,7 +23,8 @@
 static unsigned char encryption_key[KEY_SIZE];
 static int encryption_initialized = 0;
 
-static char *base64_encode(const unsigned char *input, int length)
+static char *
+base64_encode(const unsigned char *input, int length)
 {
     BIO *bio = BIO_new(BIO_s_mem());
     BIO *b64 = BIO_new(BIO_f_base64());
@@ -46,7 +47,8 @@ static char *base64_encode(const unsigned char *input, int length)
     return result;
 }
 
-static unsigned char *base64_decode(const char *input, int *output_length)
+static unsigned char *
+base64_decode(const char *input, int *output_length)
 {
     BIO *bio = BIO_new_mem_buf(input, -1);
     BIO *b64 = BIO_new(BIO_f_base64());
@@ -67,7 +69,8 @@ static unsigned char *base64_decode(const char *input, int *output_length)
     return buffer;
 }
 
-static int generate_key_from_file(void)
+static int
+generate_key_from_file(void)
 {
     const char *home = getenv("HOME");
     if (home)
@@ -91,7 +94,8 @@ static int generate_key_from_file(void)
     return 1;
 }
 
-bool encryption_init(void)
+bool
+encryption_init(void)
 {
     if (encryption_initialized)
     {
@@ -111,7 +115,8 @@ bool encryption_init(void)
     return true;
 }
 
-char *encryption_encrypt_api_key(const char *api_key)
+char *
+encryption_encrypt_api_key(const char *api_key)
 {
     if (!api_key || !encryption_initialized)
     {
@@ -191,7 +196,8 @@ char *encryption_encrypt_api_key(const char *api_key)
     return encoded;
 }
 
-char *encryption_decrypt_api_key(const char *encrypted_key)
+char *
+encryption_decrypt_api_key(const char *encrypted_key)
 {
     if (!encrypted_key || !encryption_initialized)
     {
@@ -268,7 +274,8 @@ char *encryption_decrypt_api_key(const char *encrypted_key)
     return (char *)plaintext;
 }
 
-void encryption_cleanup(void)
+void
+encryption_cleanup(void)
 {
     if (encryption_initialized)
     {

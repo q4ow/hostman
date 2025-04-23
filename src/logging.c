@@ -1,22 +1,23 @@
 #include "logging.h"
 #include "config.h"
 #include "utils.h"
+#include <errno.h>
+#include <pthread.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-#include <stdarg.h>
-#include <pthread.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
-#include <errno.h>
 
 static FILE *log_file = NULL;
 static log_level_t current_log_level = LOG_LEVEL_INFO;
 static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static log_level_t string_to_log_level(const char *level_str)
+static log_level_t
+string_to_log_level(const char *level_str)
 {
     if (!level_str)
     {
@@ -43,24 +44,26 @@ static log_level_t string_to_log_level(const char *level_str)
     return LOG_LEVEL_INFO;
 }
 
-static const char *log_level_to_string(log_level_t level)
+static const char *
+log_level_to_string(log_level_t level)
 {
     switch (level)
     {
-    case LOG_LEVEL_DEBUG:
-        return "DEBUG";
-    case LOG_LEVEL_INFO:
-        return "INFO";
-    case LOG_LEVEL_WARN:
-        return "WARN";
-    case LOG_LEVEL_ERROR:
-        return "ERROR";
-    default:
-        return "UNKNOWN";
+        case LOG_LEVEL_DEBUG:
+            return "DEBUG";
+        case LOG_LEVEL_INFO:
+            return "INFO";
+        case LOG_LEVEL_WARN:
+            return "WARN";
+        case LOG_LEVEL_ERROR:
+            return "ERROR";
+        default:
+            return "UNKNOWN";
     }
 }
 
-bool logging_init(void)
+bool
+logging_init(void)
 {
     pthread_mutex_lock(&log_mutex);
 
@@ -100,8 +103,10 @@ bool logging_init(void)
             log_file = fopen(config->log_file, "a");
             if (!log_file)
             {
-                fprintf(stderr, "Warning: Could not open log file '%s': %s\n",
-                        config->log_file, strerror(errno));
+                fprintf(stderr,
+                        "Warning: Could not open log file '%s': %s\n",
+                        config->log_file,
+                        strerror(errno));
             }
         }
     }
@@ -123,8 +128,10 @@ bool logging_init(void)
             log_file = fopen(log_path, "a");
             if (!log_file)
             {
-                fprintf(stderr, "Warning: Could not open default log file '%s': %s\n",
-                        log_path, strerror(errno));
+                fprintf(stderr,
+                        "Warning: Could not open default log file '%s': %s\n",
+                        log_path,
+                        strerror(errno));
             }
 
             free(cache_dir);
@@ -138,7 +145,13 @@ bool logging_init(void)
     return true;
 }
 
-void log_message(log_level_t level, const char *file, int line, const char *function, const char *format, ...)
+void
+log_message(log_level_t level,
+            const char *file,
+            int line,
+            const char *function,
+            const char *format,
+            ...)
 {
     if (level < current_log_level)
     {
@@ -186,8 +199,14 @@ void log_message(log_level_t level, const char *file, int line, const char *func
 
     if (log_file)
     {
-        fprintf(log_file, "[%s] [%s] [%s:%d %s] %s\n",
-                timestamp, level_str, basename, line, function, msg_buffer);
+        fprintf(log_file,
+                "[%s] [%s] [%s:%d %s] %s\n",
+                timestamp,
+                level_str,
+                basename,
+                line,
+                function,
+                msg_buffer);
         fflush(log_file);
     }
 
@@ -199,7 +218,8 @@ void log_message(log_level_t level, const char *file, int line, const char *func
     pthread_mutex_unlock(&log_mutex);
 }
 
-void logging_cleanup(void)
+void
+logging_cleanup(void)
 {
     pthread_mutex_lock(&log_mutex);
 

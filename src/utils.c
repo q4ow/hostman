@@ -1,11 +1,11 @@
 #include "utils.h"
 #include "logging.h"
+#include <math.h>
+#include <pwd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <pwd.h>
 #include <unistd.h>
-#include <math.h>
 
 #ifdef USE_CJSON
 #include <cjson/cJSON.h>
@@ -13,7 +13,8 @@
 #include <jansson.h>
 #endif
 
-char *get_filename_from_path(const char *path)
+char *
+get_filename_from_path(const char *path)
 {
     if (!path)
     {
@@ -31,9 +32,10 @@ char *get_filename_from_path(const char *path)
     }
 }
 
-void format_file_size(size_t size, char *buffer, size_t buffer_size)
+void
+format_file_size(size_t size, char *buffer, size_t buffer_size)
 {
-    const char *units[] = {"B", "KB", "MB", "GB", "TB"};
+    const char *units[] = { "B", "KB", "MB", "GB", "TB" };
     int unit_index = 0;
     double size_double = (double)size;
 
@@ -53,7 +55,8 @@ void format_file_size(size_t size, char *buffer, size_t buffer_size)
     }
 }
 
-char *get_config_dir(void)
+char *
+get_config_dir(void)
 {
     const char *xdg_config = getenv("XDG_CONFIG_HOME");
     if (xdg_config && *xdg_config)
@@ -91,7 +94,8 @@ char *get_config_dir(void)
     return dir;
 }
 
-char *get_cache_dir(void)
+char *
+get_cache_dir(void)
 {
     const char *xdg_cache = getenv("XDG_CACHE_HOME");
     if (xdg_cache && *xdg_cache)
@@ -129,7 +133,8 @@ char *get_cache_dir(void)
     return dir;
 }
 
-char *extract_json_string(const char *json, const char *path)
+char *
+extract_json_string(const char *json, const char *path)
 {
     if (!json || !path)
     {
@@ -194,7 +199,8 @@ char *extract_json_string(const char *json, const char *path)
     return result;
 }
 
-static const char *detect_clipboard_manager(void)
+static const char *
+detect_clipboard_manager(void)
 {
     const char *managers[] = {
         "wl-copy",            // Wayland
@@ -205,7 +211,7 @@ static const char *detect_clipboard_manager(void)
         "fish_clipboard_copy" // Fish shell (im desperate)
     };
 
-    static char command_found[32] = {0};
+    static char command_found[32] = { 0 };
 
     if (command_found[0] != '\0')
     {
@@ -227,12 +233,14 @@ static const char *detect_clipboard_manager(void)
     return NULL;
 }
 
-const char *get_clipboard_manager_name(void)
+const char *
+get_clipboard_manager_name(void)
 {
     return detect_clipboard_manager();
 }
 
-bool copy_to_clipboard(const char *text)
+bool
+copy_to_clipboard(const char *text)
 {
     if (!text)
         return false;
@@ -275,4 +283,40 @@ bool copy_to_clipboard(const char *text)
     }
 
     return (system(cmd) == 0);
+}
+
+void
+print_version_info(void)
+{
+    printf("\033[1;36mHOSTMAN %s\033[0m\n\n", HOSTMAN_VERSION);
+
+    printf("\033[1;37mHostman\033[0m - A command-line image host manager\n\n");
+
+    printf("\033[1;33mVersion:\033[0m     v%s\n", HOSTMAN_VERSION);
+    printf("\033[1;33mBuilt on:\033[0m    %s\n", HOSTMAN_BUILD_DATE);
+    printf("\033[1;33mBuilt at:\033[0m    %s\n", HOSTMAN_BUILD_TIME);
+
+#ifdef __GNUC__
+    printf("\033[1;33mCompiler:\033[0m    GCC/G++ %d.%d.%d\n",
+           __GNUC__,
+           __GNUC_MINOR__,
+           __GNUC_PATCHLEVEL__);
+#else
+    printf("\033[1;33mCompiler:\033[0m    Unknown\n");
+#endif
+
+#ifdef __linux__
+    printf("\033[1;33mPlatform:\033[0m    Linux\n");
+#elif defined(_WIN32) || defined(_WIN64)
+    printf("\033[1;33mPlatform:\033[0m    Windows\n");
+#elif defined(__APPLE__) && defined(__MACH__)
+    printf("\033[1;33mPlatform:\033[0m    macOS\n");
+#else
+    printf("\033[1;33mPlatform:\033[0m    Unknown\n");
+#endif
+
+    printf("\n\033[1;37mMaintained by:\033[0m  %s\n", HOSTMAN_AUTHOR);
+    printf("\033[1;37mRepository:\033[0m     %s\n\n", HOSTMAN_HOMEPAGE);
+
+    printf("\033[0;37mLicensed under MIT License.\033[0m\n");
 }

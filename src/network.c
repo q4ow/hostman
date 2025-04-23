@@ -1,11 +1,11 @@
 #include "network.h"
-#include "logging.h"
 #include "encryption.h"
+#include "logging.h"
 #include "utils.h"
 #include <curl/curl.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
@@ -18,7 +18,8 @@ typedef struct
     size_t size;
 } response_data_t;
 
-static size_t write_callback(void *contents, size_t size, size_t nmemb, void *userp)
+static size_t
+write_callback(void *contents, size_t size, size_t nmemb, void *userp)
 {
     size_t real_size = size * nmemb;
     response_data_t *resp = (response_data_t *)userp;
@@ -38,8 +39,12 @@ static size_t write_callback(void *contents, size_t size, size_t nmemb, void *us
     return real_size;
 }
 
-static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow,
-                             curl_off_t ultotal, curl_off_t ulnow)
+static int
+progress_callback(void *clientp,
+                  curl_off_t dltotal,
+                  curl_off_t dlnow,
+                  curl_off_t ultotal,
+                  curl_off_t ulnow)
 {
     if (ultotal == 0)
         return 0;
@@ -49,8 +54,8 @@ static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow
 
     time_t now = time(NULL);
     if (percent != prog->last_percent &&
-        (difftime(now, prog->last_time) * 1000 >= MIN_PROGRESS_UPDATE_MS ||
-         percent == 100.0 || prog->last_percent == 0.0))
+        (difftime(now, prog->last_time) * 1000 >= MIN_PROGRESS_UPDATE_MS || percent == 100.0 ||
+         prog->last_percent == 0.0))
     {
 
         double speed = 0.0;
@@ -100,18 +105,20 @@ static int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow
     return 0;
 }
 
-bool network_init(void)
+bool
+network_init(void)
 {
     return (curl_global_init(CURL_GLOBAL_ALL) == CURLE_OK);
 }
 
-upload_response_t *network_upload_file(const char *file_path, host_config_t *host)
+upload_response_t *
+network_upload_file(const char *file_path, host_config_t *host)
 {
     CURL *curl;
     CURLcode res;
     struct curl_slist *headers = NULL;
-    response_data_t response_data = {0};
-    progress_data_t prog_data = {0};
+    response_data_t response_data = { 0 };
+    progress_data_t prog_data = { 0 };
     upload_response_t *response = malloc(sizeof(upload_response_t));
 
     if (!response)
@@ -171,8 +178,8 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
         if (api_key)
         {
             char auth_header[1024];
-            snprintf(auth_header, sizeof(auth_header), "%s: Bearer %s",
-                     host->api_key_name, api_key);
+            snprintf(
+              auth_header, sizeof(auth_header), "%s: Bearer %s", host->api_key_name, api_key);
             headers = curl_slist_append(headers, auth_header);
             free(api_key);
         }
@@ -190,8 +197,7 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
         if (api_key)
         {
             char auth_header[1024];
-            snprintf(auth_header, sizeof(auth_header), "%s: %s",
-                     host->api_key_name, api_key);
+            snprintf(auth_header, sizeof(auth_header), "%s: %s", host->api_key_name, api_key);
             headers = curl_slist_append(headers, auth_header);
             free(api_key);
         }
@@ -251,9 +257,11 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
                 response->url = url;
                 log_info("Upload successful, URL: %s", url);
 
-                if (host->response_deletion_url_json_path && strlen(host->response_deletion_url_json_path) > 0)
+                if (host->response_deletion_url_json_path &&
+                    strlen(host->response_deletion_url_json_path) > 0)
                 {
-                    char *deletion_url = extract_json_string(response_data.data, host->response_deletion_url_json_path);
+                    char *deletion_url = extract_json_string(response_data.data,
+                                                             host->response_deletion_url_json_path);
                     if (deletion_url)
                     {
                         response->deletion_url = deletion_url;
@@ -261,7 +269,8 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
                     }
                     else
                     {
-                        log_warn("Could not extract deletion URL using path: %s", host->response_deletion_url_json_path);
+                        log_warn("Could not extract deletion URL using path: %s",
+                                 host->response_deletion_url_json_path);
                     }
                 }
             }
@@ -288,7 +297,8 @@ upload_response_t *network_upload_file(const char *file_path, host_config_t *hos
     return response;
 }
 
-void network_free_response(upload_response_t *response)
+void
+network_free_response(upload_response_t *response)
 {
     if (response)
     {
@@ -299,7 +309,8 @@ void network_free_response(upload_response_t *response)
     }
 }
 
-void network_cleanup(void)
+void
+network_cleanup(void)
 {
     curl_global_cleanup();
 }

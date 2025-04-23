@@ -32,10 +32,15 @@ typedef struct
     int upload_id;
 } command_args_t;
 
-command_args_t parse_args(int argc, char *argv[]);
-int execute_command(command_args_t *args);
-int run_setup_wizard(void);
-void free_command_args(command_args_t *args);
-void print_command_help(const char *command);
+command_args_t
+parse_args(int argc, char *argv[]);
+int
+execute_command(command_args_t *args);
+int
+run_setup_wizard(void);
+void
+free_command_args(command_args_t *args);
+void
+print_command_help(const char *command);
 
 #endif

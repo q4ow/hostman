@@ -1,18 +1,19 @@
 #include "database.h"
 #include "logging.h"
 #include "utils.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <errno.h>
+#include <unistd.h>
 
 static sqlite3 *db = NULL;
 static bool has_deletion_url_column = false;
 
-static char *db_get_path(void)
+static char *
+db_get_path(void)
 {
     char *cache_dir = get_cache_dir();
     if (!cache_dir)
@@ -34,7 +35,8 @@ static char *db_get_path(void)
     return path;
 }
 
-static bool check_deletion_url_column()
+static bool
+check_deletion_url_column()
 {
     if (!db)
         return false;
@@ -79,7 +81,8 @@ static bool check_deletion_url_column()
     return found;
 }
 
-bool db_init(void)
+bool
+db_init(void)
 {
     if (db)
     {
@@ -124,16 +127,15 @@ bool db_init(void)
 
     free(db_path);
 
-    const char *create_table_sql =
-        "CREATE TABLE IF NOT EXISTS uploads ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "timestamp INTEGER NOT NULL,"
-        "host_name TEXT NOT NULL,"
-        "local_path TEXT NOT NULL,"
-        "remote_url TEXT UNIQUE NOT NULL,"
-        "filename TEXT NOT NULL,"
-        "size INTEGER NOT NULL"
-        ");";
+    const char *create_table_sql = "CREATE TABLE IF NOT EXISTS uploads ("
+                                   "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                                   "timestamp INTEGER NOT NULL,"
+                                   "host_name TEXT NOT NULL,"
+                                   "local_path TEXT NOT NULL,"
+                                   "remote_url TEXT UNIQUE NOT NULL,"
+                                   "filename TEXT NOT NULL,"
+                                   "size INTEGER NOT NULL"
+                                   ");";
 
     char *error_msg = NULL;
     result = sqlite3_exec(db, create_table_sql, NULL, NULL, &error_msg);
@@ -151,15 +153,21 @@ bool db_init(void)
     return true;
 }
 
-bool db_add_upload(const char *host_name, const char *local_path,
-                   const char *remote_url, const char *deletion_url, const char *filename, size_t size)
+bool
+db_add_upload(const char *host_name,
+              const char *local_path,
+              const char *remote_url,
+              const char *deletion_url,
+              const char *filename,
+              size_t size)
 {
     if (!db && !db_init())
     {
         return false;
     }
 
-    const char *sql = "INSERT INTO uploads (timestamp, host_name, local_path, remote_url, deletion_url, filename, size) "
+    const char *sql = "INSERT INTO uploads (timestamp, host_name, local_path, remote_url, "
+                      "deletion_url, filename, size) "
                       "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt *stmt;
@@ -201,7 +209,8 @@ bool db_add_upload(const char *host_name, const char *local_path,
     return true;
 }
 
-upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int *count)
+upload_record_t **
+db_get_uploads(const char *host_name, int page, int limit, int *count)
 {
     *count = 0;
 
@@ -218,7 +227,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
     {
         if (has_deletion_url_column)
         {
-            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, "
+                  "filename, size "
                   "FROM uploads WHERE host_name = ? "
                   "ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
         }
@@ -244,7 +254,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
     {
         if (has_deletion_url_column)
         {
-            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, filename, size "
+            sql = "SELECT id, timestamp, host_name, local_path, remote_url, deletion_url, "
+                  "filename, size "
                   "FROM uploads ORDER BY timestamp DESC LIMIT ? OFFSET ?;";
         }
         else
@@ -322,7 +333,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
         if (has_deletion_url_column)
         {
             const unsigned char *deletion_url_text = sqlite3_column_text(stmt, 5);
-            record->deletion_url = deletion_url_text ? strdup((const char *)deletion_url_text) : NULL;
+            record->deletion_url =
+              deletion_url_text ? strdup((const char *)deletion_url_text) : NULL;
             col_offset = 1;
         }
         else
@@ -359,7 +371,8 @@ upload_record_t **db_get_uploads(const char *host_name, int page, int limit, int
     return records;
 }
 
-void db_free_records(upload_record_t **records, int count)
+void
+db_free_records(upload_record_t **records, int count)
 {
     if (!records)
     {
@@ -382,7 +395,8 @@ void db_free_records(upload_record_t **records, int count)
     free(records);
 }
 
-bool db_delete_upload(int id)
+bool
+db_delete_upload(int id)
 {
     if (!db && !db_init())
     {
@@ -421,7 +435,8 @@ bool db_delete_upload(int id)
     return true;
 }
 
-void db_close(void)
+void
+db_close(void)
 {
     if (db)
     {

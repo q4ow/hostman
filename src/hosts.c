@@ -9,7 +9,8 @@
 
 #define MAX_INPUT_LENGTH 512
 
-static char *read_input(const char *prompt, bool required)
+static char *
+read_input(const char *prompt, bool required)
 {
     char buffer[MAX_INPUT_LENGTH];
     char *result = NULL;
@@ -49,7 +50,8 @@ static char *read_input(const char *prompt, bool required)
     return result;
 }
 
-static char *read_input_default(const char *prompt, const char *default_value)
+static char *
+read_input_default(const char *prompt, const char *default_value)
 {
     char full_prompt[MAX_INPUT_LENGTH * 2];
     snprintf(full_prompt, sizeof(full_prompt), "%s [%s]: ", prompt, default_value);
@@ -63,7 +65,8 @@ static char *read_input_default(const char *prompt, const char *default_value)
     return input;
 }
 
-int hosts_add_interactive(void)
+int
+hosts_add_interactive(void)
 {
     printf("Adding a new host configuration...\n");
 
@@ -153,7 +156,8 @@ int hosts_add_interactive(void)
     char *request_body_format = read_input_default("Request body format", "multipart");
     char *file_form_field = read_input_default("File form field name", "file");
     char *response_url_json_path = read_input_default("JSON path to URL in response", "url");
-    char *response_deletion_url_json_path = read_input_default("JSON path to deletion URL in response", "deletion_url");
+    char *response_deletion_url_json_path =
+      read_input_default("JSON path to deletion URL in response", "deletion_url");
     char **static_field_names = NULL;
     char **static_field_values = NULL;
     int static_field_count = 0;
@@ -170,7 +174,8 @@ int hosts_add_interactive(void)
             while (1)
             {
                 char field_prompt[64];
-                snprintf(field_prompt, sizeof(field_prompt), "Field #%d name: ", static_field_count + 1);
+                snprintf(
+                  field_prompt, sizeof(field_prompt), "Field #%d name: ", static_field_count + 1);
 
                 char *field_name = read_input(field_prompt, false);
                 if (!field_name || strlen(field_name) == 0)
@@ -179,7 +184,8 @@ int hosts_add_interactive(void)
                     break;
                 }
 
-                snprintf(field_prompt, sizeof(field_prompt), "Field #%d value: ", static_field_count + 1);
+                snprintf(
+                  field_prompt, sizeof(field_prompt), "Field #%d value: ", static_field_count + 1);
                 char *field_value = read_input(field_prompt, true);
                 if (!field_value)
                 {
@@ -187,8 +193,10 @@ int hosts_add_interactive(void)
                     break;
                 }
 
-                char **new_names = realloc(static_field_names, (static_field_count + 1) * sizeof(char *));
-                char **new_values = realloc(static_field_values, (static_field_count + 1) * sizeof(char *));
+                char **new_names =
+                  realloc(static_field_names, (static_field_count + 1) * sizeof(char *));
+                char **new_values =
+                  realloc(static_field_values, (static_field_count + 1) * sizeof(char *));
 
                 if (!new_names || !new_values)
                 {
@@ -208,9 +216,18 @@ int hosts_add_interactive(void)
         }
     }
 
-    bool result = hosts_add(name, api_endpoint, auth_type, api_key_name, api_key,
-                            request_body_format, file_form_field, response_url_json_path, response_deletion_url_json_path,
-                            static_field_names, static_field_values, static_field_count);
+    bool result = hosts_add(name,
+                            api_endpoint,
+                            auth_type,
+                            api_key_name,
+                            api_key,
+                            request_body_format,
+                            file_form_field,
+                            response_url_json_path,
+                            response_deletion_url_json_path,
+                            static_field_names,
+                            static_field_values,
+                            static_field_count);
 
     hostman_config_t *config = config_load();
     if (result && (!config->default_host || config->host_count == 1))
@@ -257,15 +274,23 @@ int hosts_add_interactive(void)
     }
 }
 
-bool hosts_add(const char *name, const char *api_endpoint, const char *auth_type,
-               const char *api_key_name, const char *api_key,
-               const char *request_body_format, const char *file_form_field,
-               const char *response_url_json_path, const char *response_deletion_url_json_path,
-               char **static_field_names, char **static_field_values, int static_field_count)
+bool
+hosts_add(const char *name,
+          const char *api_endpoint,
+          const char *auth_type,
+          const char *api_key_name,
+          const char *api_key,
+          const char *request_body_format,
+          const char *file_form_field,
+          const char *response_url_json_path,
+          const char *response_deletion_url_json_path,
+          char **static_field_names,
+          char **static_field_values,
+          int static_field_count)
 {
 
-    if (!name || !api_endpoint || !auth_type || !api_key_name || !api_key ||
-        !request_body_format || !file_form_field || !response_url_json_path || !response_deletion_url_json_path)
+    if (!name || !api_endpoint || !auth_type || !api_key_name || !api_key || !request_body_format ||
+        !file_form_field || !response_url_json_path || !response_deletion_url_json_path)
     {
         log_error("Missing required host configuration fields");
         return false;

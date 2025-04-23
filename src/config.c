@@ -1,12 +1,12 @@
 #include "config.h"
 #include "logging.h"
 #include "utils.h"
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <errno.h>
+#include <unistd.h>
 
 #ifdef USE_CJSON
 #include <cjson/cJSON.h>
@@ -16,7 +16,8 @@
 
 static hostman_config_t *current_config = NULL;
 
-char *config_get_path(void)
+char *
+config_get_path(void)
 {
     char *config_dir = get_config_dir();
     if (!config_dir)
@@ -39,7 +40,8 @@ char *config_get_path(void)
 }
 
 #ifdef USE_CJSON
-static host_config_t *parse_host_config(cJSON *host_json, const char *name)
+static host_config_t *
+parse_host_config(cJSON *host_json, const char *name)
 {
     host_config_t *host = calloc(1, sizeof(host_config_t));
     if (!host)
@@ -127,7 +129,8 @@ static host_config_t *parse_host_config(cJSON *host_json, const char *name)
     return host;
 }
 
-static hostman_config_t *parse_config(cJSON *json)
+static hostman_config_t *
+parse_config(cJSON *json)
 {
     if (!json)
     {
@@ -218,7 +221,8 @@ static hostman_config_t *parse_config(cJSON *json)
     return config;
 }
 
-static cJSON *host_config_to_json(host_config_t *host)
+static cJSON *
+host_config_to_json(host_config_t *host)
 {
     cJSON *json = cJSON_CreateObject();
 
@@ -264,7 +268,8 @@ static cJSON *host_config_to_json(host_config_t *host)
         {
             if (host->static_field_names[i] && host->static_field_values[i])
             {
-                cJSON_AddStringToObject(static_form_fields, host->static_field_names[i], host->static_field_values[i]);
+                cJSON_AddStringToObject(
+                  static_form_fields, host->static_field_names[i], host->static_field_values[i]);
             }
         }
         cJSON_AddItemToObject(json, "static_form_fields", static_form_fields);
@@ -273,7 +278,8 @@ static cJSON *host_config_to_json(host_config_t *host)
     return json;
 }
 
-static cJSON *config_to_json(hostman_config_t *config)
+static cJSON *
+config_to_json(hostman_config_t *config)
 {
     cJSON *json = cJSON_CreateObject();
 
@@ -310,7 +316,8 @@ static cJSON *config_to_json(hostman_config_t *config)
 
 #else
 
-static host_config_t *parse_host_config(json_t *host_json, const char *name)
+static host_config_t *
+parse_host_config(json_t *host_json, const char *name)
 {
     host_config_t *host = calloc(1, sizeof(host_config_t));
     if (!host)
@@ -400,7 +407,8 @@ static host_config_t *parse_host_config(json_t *host_json, const char *name)
     return host;
 }
 
-static hostman_config_t *parse_config(json_t *json)
+static hostman_config_t *
+parse_config(json_t *json)
 {
     if (!json)
     {
@@ -493,7 +501,8 @@ static hostman_config_t *parse_config(json_t *json)
     return config;
 }
 
-static json_t *host_config_to_json(host_config_t *host)
+static json_t *
+host_config_to_json(host_config_t *host)
 {
     json_t *json = json_object();
 
@@ -529,7 +538,8 @@ static json_t *host_config_to_json(host_config_t *host)
 
     if (host->response_url_json_path)
     {
-        json_object_set_new(json, "response_url_json_path", json_string(host->response_url_json_path));
+        json_object_set_new(
+          json, "response_url_json_path", json_string(host->response_url_json_path));
     }
 
     if (host->static_field_count > 0 && host->static_field_names && host->static_field_values)
@@ -539,7 +549,8 @@ static json_t *host_config_to_json(host_config_t *host)
         {
             if (host->static_field_names[i] && host->static_field_values[i])
             {
-                json_object_set_new(static_form_fields, host->static_field_names[i],
+                json_object_set_new(static_form_fields,
+                                    host->static_field_names[i],
                                     json_string(host->static_field_values[i]));
             }
         }
@@ -549,7 +560,8 @@ static json_t *host_config_to_json(host_config_t *host)
     return json;
 }
 
-static json_t *config_to_json(hostman_config_t *config)
+static json_t *
+config_to_json(hostman_config_t *config)
 {
     json_t *json = json_object();
 
@@ -585,7 +597,8 @@ static json_t *config_to_json(hostman_config_t *config)
 }
 #endif
 
-hostman_config_t *config_load(void)
+hostman_config_t *
+config_load(void)
 {
     if (current_config)
     {
@@ -678,7 +691,8 @@ hostman_config_t *config_load(void)
     return config;
 }
 
-bool config_save(hostman_config_t *config)
+bool
+config_save(hostman_config_t *config)
 {
     if (!config)
     {
@@ -768,7 +782,8 @@ bool config_save(hostman_config_t *config)
     return success;
 }
 
-char *config_get_value(const char *key)
+char *
+config_get_value(const char *key)
 {
     if (!key)
     {
@@ -887,7 +902,8 @@ char *config_get_value(const char *key)
     return value;
 }
 
-bool config_set_value(const char *key, const char *value)
+bool
+config_set_value(const char *key, const char *value)
 {
     if (!key || !value)
     {
@@ -1057,7 +1073,8 @@ bool config_set_value(const char *key, const char *value)
     return changed;
 }
 
-bool config_add_host(host_config_t *host)
+bool
+config_add_host(host_config_t *host)
 {
     if (!host || !host->name)
     {
@@ -1097,7 +1114,8 @@ bool config_add_host(host_config_t *host)
         }
     }
 
-    host_config_t **new_hosts = realloc(config->hosts, (config->host_count + 1) * sizeof(host_config_t *));
+    host_config_t **new_hosts =
+      realloc(config->hosts, (config->host_count + 1) * sizeof(host_config_t *));
     if (!new_hosts)
     {
         log_error("Failed to allocate memory for new host");
@@ -1116,7 +1134,8 @@ bool config_add_host(host_config_t *host)
     return config_save(config);
 }
 
-bool config_remove_host(const char *host_name)
+bool
+config_remove_host(const char *host_name)
 {
     if (!host_name)
     {
@@ -1187,7 +1206,8 @@ bool config_remove_host(const char *host_name)
     return config_save(config);
 }
 
-bool config_set_default_host(const char *host_name)
+bool
+config_set_default_host(const char *host_name)
 {
     if (!host_name)
     {
@@ -1222,7 +1242,8 @@ bool config_set_default_host(const char *host_name)
     return config_save(config);
 }
 
-host_config_t *config_get_default_host(void)
+host_config_t *
+config_get_default_host(void)
 {
     hostman_config_t *config = config_load();
     if (!config || !config->default_host)
@@ -1241,7 +1262,8 @@ host_config_t *config_get_default_host(void)
     return NULL;
 }
 
-host_config_t *config_get_host(const char *host_name)
+host_config_t *
+config_get_host(const char *host_name)
 {
     if (!host_name)
     {
@@ -1265,7 +1287,8 @@ host_config_t *config_get_host(const char *host_name)
     return NULL;
 }
 
-void config_free(hostman_config_t *config)
+void
+config_free(hostman_config_t *config)
 {
     if (!config)
     {

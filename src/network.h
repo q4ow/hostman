@@ -21,9 +21,13 @@ typedef struct
     double request_time_ms;
 } upload_response_t;
 
-bool network_init(void);
-upload_response_t *network_upload_file(const char *file_path, host_config_t *host);
-void network_free_response(upload_response_t *response);
-void network_cleanup(void);
+bool
+network_init(void);
+upload_response_t *
+network_upload_file(const char *file_path, host_config_t *host);
+void
+network_free_response(upload_response_t *response);
+void
+network_cleanup(void);
 
 #endif

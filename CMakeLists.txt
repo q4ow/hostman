@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(hostman VERSION 1.0.0 LANGUAGES C)
+project(hostman VERSION 1.1.0 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -66,3 +66,32 @@ endif()
 
 # Installation rules
 install(TARGETS hostman DESTINATION bin)
+
+# Add clang-format target
+find_program(CLANG_FORMAT "clang-format")
+if(CLANG_FORMAT)
+    message(STATUS "Found clang-format: ${CLANG_FORMAT}")
+    
+    file(GLOB_RECURSE ALL_SOURCE_FILES
+        "${CMAKE_SOURCE_DIR}/src/*.c"
+        "${CMAKE_SOURCE_DIR}/src/*.h"
+    )
+    
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT} -i -style=file ${ALL_SOURCE_FILES}
+        COMMENT "Formatting source code with clang-format"
+        VERBATIM
+    )
+    
+    add_custom_target(check-format
+        COMMAND ${CLANG_FORMAT} -style=file -output-replacements-xml ${ALL_SOURCE_FILES} | grep -c "<replacement " > /dev/null && echo "Code formatting issues found" || echo "Code formatting check passed"
+        COMMENT "Checking code formatting with clang-format"
+        VERBATIM
+    )
+else()
+    message(STATUS "clang-format not found, format target will not be available")
+    add_custom_target(format
+        COMMAND echo "clang-format not found, please install it to enable automatic formatting"
+        VERBATIM
+    )
+endif()
