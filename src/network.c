@@ -12,6 +12,13 @@
 
 #define MIN_PROGRESS_UPDATE_MS 100
 
+static network_config_t global_config = { .timeout_seconds = DEFAULT_TIMEOUT_SECONDS,
+                                          .max_retries = DEFAULT_MAX_RETRIES,
+                                          .retry_delay_ms = DEFAULT_RETRY_DELAY_MS,
+                                          .enable_http2 = true,
+                                          .proxy_url = NULL,
+                                          .verbose = false };
+
 typedef struct
 {
     char *data;
@@ -108,7 +115,71 @@ progress_callback(void *clientp,
 bool
 network_init(void)
 {
+    curl_version_info_data *version_info = curl_version_info(CURLVERSION_NOW);
+    if (version_info->features & CURL_VERSION_HTTP2)
+    {
+        log_info("HTTP/2 support enabled");
+    }
+    else
+    {
+        log_warn("HTTP/2 not supported by libcurl, falling back to HTTP/1.1");
+        global_config.enable_http2 = false;
+    }
     return (curl_global_init(CURL_GLOBAL_ALL) == CURLE_OK);
+}
+
+void
+network_set_config(network_config_t *config)
+{
+    if (config)
+    {
+        global_config.timeout_seconds = config->timeout_seconds;
+        global_config.max_retries = config->max_retries;
+        global_config.retry_delay_ms = config->retry_delay_ms;
+        global_config.enable_http2 = config->enable_http2;
+        if (global_config.proxy_url)
+        {
+            free(global_config.proxy_url);
+        }
+        global_config.proxy_url = config->proxy_url ? strdup(config->proxy_url) : NULL;
+        global_config.verbose = config->verbose;
+    }
+}
+
+static void
+configure_curl_handle(CURL *curl,
+                      struct curl_slist *headers,
+                      response_data_t *response_data,
+                      progress_data_t *prog_data,
+                      const char *url)
+{
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, response_data);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, prog_data);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, global_config.timeout_seconds);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, global_config.timeout_seconds);
+
+    if (global_config.enable_http2)
+    {
+        curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+    }
+
+    if (global_config.proxy_url)
+    {
+        curl_easy_setopt(curl, CURLOPT_PROXY, global_config.proxy_url);
+    }
+
+    if (global_config.verbose)
+    {
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    }
 }
 
 upload_response_t *
@@ -120,6 +191,7 @@ network_upload_file(const char *file_path, host_config_t *host)
     response_data_t response_data = { 0 };
     progress_data_t prog_data = { 0 };
     upload_response_t *response = malloc(sizeof(upload_response_t));
+    int retry_count = 0;
 
     if (!response)
     {
@@ -132,6 +204,8 @@ network_upload_file(const char *file_path, host_config_t *host)
     response->deletion_url = NULL;
     response->error_message = NULL;
     response->request_time_ms = 0.0;
+    response->retry_count = 0;
+    response->http_code = 0;
 
     if (access(file_path, R_OK) != 0)
     {
@@ -146,109 +220,115 @@ network_upload_file(const char *file_path, host_config_t *host)
         return response;
     }
 
-    curl = curl_easy_init();
-    if (!curl)
+    do
     {
-        response->error_message = strdup("Failed to initialize curl");
-        return response;
-    }
-
-    curl_mime *mime = curl_mime_init(curl);
-    if (!mime)
-    {
-        response->error_message = strdup("Failed to initialize mime form");
-        curl_easy_cleanup(curl);
-        return response;
-    }
-
-    curl_mimepart *part = curl_mime_addpart(mime);
-    curl_mime_name(part, host->file_form_field);
-    curl_mime_filedata(part, file_path);
-
-    for (int i = 0; i < host->static_field_count; i++)
-    {
-        part = curl_mime_addpart(mime);
-        curl_mime_name(part, host->static_field_names[i]);
-        curl_mime_data(part, host->static_field_values[i], CURL_ZERO_TERMINATED);
-    }
-
-    if (strcmp(host->auth_type, "bearer") == 0)
-    {
-        char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
-        if (api_key)
+        if (retry_count > 0)
         {
-            char auth_header[1024];
-            snprintf(
-              auth_header, sizeof(auth_header), "%s: Bearer %s", host->api_key_name, api_key);
-            headers = curl_slist_append(headers, auth_header);
-            free(api_key);
+            log_info(
+              "Retrying upload (attempt %d of %d)", retry_count + 1, global_config.max_retries);
+            usleep(global_config.retry_delay_ms * 1000);
         }
-        else
+
+        curl = curl_easy_init();
+        if (!curl)
         {
-            response->error_message = strdup("Failed to decrypt API key");
-            curl_easy_cleanup(curl);
-            curl_mime_free(mime);
+            response->error_message = strdup("Failed to initialize curl");
             return response;
         }
-    }
-    else if (strcmp(host->auth_type, "header") == 0)
-    {
-        char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
-        if (api_key)
+
+        free(response_data.data);
+        response_data.data = NULL;
+        response_data.size = 0;
+
+        curl_mime *mime = curl_mime_init(curl);
+        if (!mime)
         {
-            char auth_header[1024];
-            snprintf(auth_header, sizeof(auth_header), "%s: %s", host->api_key_name, api_key);
-            headers = curl_slist_append(headers, auth_header);
-            free(api_key);
-        }
-        else
-        {
-            response->error_message = strdup("Failed to decrypt API key");
+            response->error_message = strdup("Failed to initialize mime form");
             curl_easy_cleanup(curl);
-            curl_mime_free(mime);
             return response;
         }
-    }
 
-    curl_easy_setopt(curl, CURLOPT_URL, host->api_endpoint);
-    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-    curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_data);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog_data);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+        curl_mimepart *part = curl_mime_addpart(mime);
+        curl_mime_name(part, host->file_form_field);
+        curl_mime_filedata(part, file_path);
 
-    prog_data.last_time = time(NULL);
+        for (int i = 0; i < host->static_field_count; i++)
+        {
+            part = curl_mime_addpart(mime);
+            curl_mime_name(part, host->static_field_names[i]);
+            curl_mime_data(part, host->static_field_values[i], CURL_ZERO_TERMINATED);
+        }
 
-    log_info("Connecting to host: %s", host->api_endpoint);
-    fprintf(stderr, "Uploading file: %s\n", file_path);
+        if (strcmp(host->auth_type, "bearer") == 0)
+        {
+            char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
+            if (api_key)
+            {
+                char auth_header[1024];
+                snprintf(
+                  auth_header, sizeof(auth_header), "%s: Bearer %s", host->api_key_name, api_key);
+                headers = curl_slist_append(headers, auth_header);
+                free(api_key);
+            }
+            else
+            {
+                response->error_message = strdup("Failed to decrypt API key");
+                curl_easy_cleanup(curl);
+                curl_mime_free(mime);
+                return response;
+            }
+        }
+        else if (strcmp(host->auth_type, "header") == 0)
+        {
+            char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
+            if (api_key)
+            {
+                char auth_header[1024];
+                snprintf(auth_header, sizeof(auth_header), "%s: %s", host->api_key_name, api_key);
+                headers = curl_slist_append(headers, auth_header);
+                free(api_key);
+            }
+            else
+            {
+                response->error_message = strdup("Failed to decrypt API key");
+                curl_easy_cleanup(curl);
+                curl_mime_free(mime);
+                return response;
+            }
+        }
 
-    struct timespec start_time, end_time;
-    clock_gettime(CLOCK_MONOTONIC, &start_time);
+        configure_curl_handle(curl, headers, &response_data, &prog_data, host->api_endpoint);
+        curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 
-    res = curl_easy_perform(curl);
+        prog_data.last_time = time(NULL);
 
-    clock_gettime(CLOCK_MONOTONIC, &end_time);
-    double time_taken_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0;
-    time_taken_ms += (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
-    response->request_time_ms = time_taken_ms;
+        log_info("Connecting to host: %s (attempt %d)", host->api_endpoint, retry_count + 1);
+        if (retry_count == 0)
+        {
+            fprintf(stderr, "Uploading file: %s\n", file_path);
+        }
 
-    fprintf(stderr, "\r\033[K");
+        struct timespec start_time, end_time;
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
 
-    if (res != CURLE_OK)
-    {
-        response->error_message = strdup(curl_easy_strerror(res));
-        log_error("Upload failed: %s", response->error_message);
-    }
-    else
-    {
-        long http_code = 0;
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+        res = curl_easy_perform(curl);
 
-        if (http_code >= 200 && http_code < 300)
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double time_taken_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0;
+        time_taken_ms += (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+        response->request_time_ms = time_taken_ms;
+
+        fprintf(stderr, "\r\033[K");
+
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response->http_code);
+
+        if (res != CURLE_OK)
+        {
+            free(response->error_message);
+            response->error_message = strdup(curl_easy_strerror(res));
+            log_error("Upload failed: %s", response->error_message);
+        }
+        else if (response->http_code >= 200 && response->http_code < 300)
         {
             char *url = extract_json_string(response_data.data, host->response_url_json_path);
             if (url)
@@ -273,25 +353,25 @@ network_upload_file(const char *file_path, host_config_t *host)
                                  host->response_deletion_url_json_path);
                     }
                 }
+                break;
             }
             else
             {
+                free(response->error_message);
                 response->error_message = strdup("Failed to extract URL from response");
                 log_error("Failed to extract URL from response: %s", response_data.data);
             }
         }
-        else
-        {
-            char error_msg[256];
-            snprintf(error_msg, sizeof(error_msg), "HTTP error: %ld", http_code);
-            response->error_message = strdup(error_msg);
-            log_error("HTTP error %ld: %s", http_code, response_data.data);
-        }
-    }
 
-    curl_easy_cleanup(curl);
-    curl_mime_free(mime);
-    curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+        curl_mime_free(mime);
+        curl_slist_free_all(headers);
+        headers = NULL;
+
+        retry_count++;
+    } while (retry_count < global_config.max_retries && !response->success);
+
+    response->retry_count = retry_count;
     free(response_data.data);
 
     return response;
@@ -312,5 +392,10 @@ network_free_response(upload_response_t *response)
 void
 network_cleanup(void)
 {
+    if (global_config.proxy_url)
+    {
+        free(global_config.proxy_url);
+        global_config.proxy_url = NULL;
+    }
     curl_global_cleanup();
 }
