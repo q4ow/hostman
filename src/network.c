@@ -303,11 +303,6 @@ network_upload_file(const char *file_path, host_config_t *host)
         prog_data.last_time = time(NULL);
 
         log_info("Connecting to host: %s (attempt %d)", host->api_endpoint, retry_count + 1);
-        if (retry_count == 0)
-        {
-            fprintf(stderr, "Uploading file: %s\n", file_path);
-        }
-
         struct timespec start_time, end_time;
         clock_gettime(CLOCK_MONOTONIC, &start_time);
 
