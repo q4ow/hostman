@@ -1,7 +1,7 @@
 #ifndef HOSTMAN_NETWORK_H
 #define HOSTMAN_NETWORK_H
 
-#include "config.h"
+#include "hostman/core/config.h"
 #include <curl/curl.h>
 #include <stdbool.h>
 

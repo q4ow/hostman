@@ -1,7 +1,7 @@
-#include "network.h"
-#include "encryption.h"
-#include "logging.h"
-#include "utils.h"
+#include "hostman/network/network.h"
+#include "hostman/core/logging.h"
+#include "hostman/core/utils.h"
+#include "hostman/crypto/encryption.h"
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>

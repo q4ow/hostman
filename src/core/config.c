@@ -1,6 +1,6 @@
-#include "config.h"
-#include "logging.h"
-#include "utils.h"
+#include "hostman/core/config.h"
+#include "hostman/core/logging.h"
+#include "hostman/core/utils.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,7 +1,7 @@
-#include "hosts.h"
-#include "config.h"
-#include "encryption.h"
-#include "logging.h"
+#include "hostman/network/hosts.h"
+#include "hostman/core/config.h"
+#include "hostman/core/logging.h"
+#include "hostman/crypto/encryption.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

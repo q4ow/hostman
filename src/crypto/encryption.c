@@ -1,7 +1,7 @@
-#include "encryption.h"
-#include "config.h"
-#include "logging.h"
-#include "utils.h"
+#include "hostman/crypto/encryption.h"
+#include "hostman/core/config.h"
+#include "hostman/core/logging.h"
+#include "hostman/core/utils.h"
 #include <fcntl.h>
 #include <openssl/bio.h>
 #include <openssl/buffer.h>

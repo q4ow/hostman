@@ -1,10 +1,10 @@
-#include "cli.h"
-#include "config.h"
-#include "database.h"
-#include "encryption.h"
-#include "logging.h"
-#include "network.h"
-#include "utils.h"
+#include "hostman/cli/cli.h"
+#include "hostman/core/config.h"
+#include "hostman/core/logging.h"
+#include "hostman/core/utils.h"
+#include "hostman/crypto/encryption.h"
+#include "hostman/network/network.h"
+#include "hostman/storage/database.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

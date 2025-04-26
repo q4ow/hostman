@@ -1,5 +1,5 @@
-#include "utils.h"
-#include "logging.h"
+#include "hostman/core/utils.h"
+#include "hostman/core/logging.h"
 #include <math.h>
 #include <pwd.h>
 #include <stdio.h>

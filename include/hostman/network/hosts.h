@@ -1,7 +1,7 @@
 #ifndef HOSTMAN_HOSTS_H
 #define HOSTMAN_HOSTS_H
 
-#include "config.h"
+#include "hostman/core/config.h"
 #include <stdbool.h>
 
 int
