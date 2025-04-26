@@ -27,7 +27,7 @@ Hostman is a robust, cross-platform command-line application for uploading files
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hostman.git
+git clone https://github.com/q4ow/hostman.git
 cd hostman
 
 # Create build directory

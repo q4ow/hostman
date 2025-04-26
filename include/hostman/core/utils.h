@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define HOSTMAN_VERSION "1.1.1"
+#define HOSTMAN_VERSION "1.1.3"
 #define HOSTMAN_BUILD_DATE __DATE__
 #define HOSTMAN_BUILD_TIME __TIME__
 #define HOSTMAN_AUTHOR "Keiran"

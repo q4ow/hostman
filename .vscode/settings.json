@@ -1,4 +1,7 @@
 {
     "cmake.sourceDirectory": "/home/keiran/Coding/C/hostman",
-    "C_Cpp.errorSquiggles": "disabled"
+    "C_Cpp.errorSquiggles": "disabled",
+    "files.associations": {
+        "stddef.h": "c"
+    }
 }
