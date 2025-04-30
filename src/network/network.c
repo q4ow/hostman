@@ -259,7 +259,11 @@ network_upload_file(const char *file_path, host_config_t *host)
             curl_mime_data(part, host->static_field_values[i], CURL_ZERO_TERMINATED);
         }
 
-        if (strcmp(host->auth_type, "bearer") == 0)
+        if (strcmp(host->auth_type, "none") == 0)
+        {
+            // :3
+        }
+        else if (strcmp(host->auth_type, "bearer") == 0)
         {
             char *api_key = encryption_decrypt_api_key(host->api_key_encrypted);
             if (api_key)

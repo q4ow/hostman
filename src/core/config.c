@@ -93,6 +93,14 @@ parse_host_config(cJSON *host_json, const char *name)
         host->response_url_json_path = strdup(response_url_json_path->valuestring);
     }
 
+    cJSON *response_deletion_url_json_path =
+      cJSON_GetObjectItem(host_json, "response_deletion_url_json_path");
+    if (response_deletion_url_json_path && cJSON_IsString(response_deletion_url_json_path))
+    {
+        host->response_deletion_url_json_path =
+          strdup(response_deletion_url_json_path->valuestring);
+    }
+
     cJSON *static_form_fields = cJSON_GetObjectItem(host_json, "static_form_fields");
     if (static_form_fields && cJSON_IsObject(static_form_fields))
     {
@@ -261,6 +269,12 @@ host_config_to_json(host_config_t *host)
         cJSON_AddStringToObject(json, "response_url_json_path", host->response_url_json_path);
     }
 
+    if (host->response_deletion_url_json_path)
+    {
+        cJSON_AddStringToObject(
+          json, "response_deletion_url_json_path", host->response_deletion_url_json_path);
+    }
+
     if (host->static_field_count > 0 && host->static_field_names && host->static_field_values)
     {
         cJSON *static_form_fields = cJSON_CreateObject();
@@ -367,6 +381,14 @@ parse_host_config(json_t *host_json, const char *name)
     if (response_url_json_path && json_is_string(response_url_json_path))
     {
         host->response_url_json_path = strdup(json_string_value(response_url_json_path));
+    }
+
+    json_t *response_deletion_url_json_path =
+      json_object_get(host_json, "response_deletion_url_json_path");
+    if (response_deletion_url_json_path && json_is_string(response_deletion_url_json_path))
+    {
+        host->response_deletion_url_json_path =
+          strdup(json_string_value(response_deletion_url_json_path));
     }
 
     json_t *static_form_fields = json_object_get(host_json, "static_form_fields");
@@ -540,6 +562,13 @@ host_config_to_json(host_config_t *host)
     {
         json_object_set_new(
           json, "response_url_json_path", json_string(host->response_url_json_path));
+    }
+
+    if (host->response_deletion_url_json_path)
+    {
+        json_object_set_new(json,
+                            "response_deletion_url_json_path",
+                            json_string(host->response_deletion_url_json_path));
     }
 
     if (host->static_field_count > 0 && host->static_field_names && host->static_field_values)
@@ -892,6 +921,13 @@ config_get_value(const char *key)
                             value = strdup(host->response_url_json_path);
                         }
                     }
+                    else if (strcmp(prop, "response_deletion_url_json_path") == 0)
+                    {
+                        if (host->response_deletion_url_json_path)
+                        {
+                            value = strdup(host->response_deletion_url_json_path);
+                        }
+                    }
                 }
 
                 free(host_name);
@@ -1050,6 +1086,12 @@ config_set_value(const char *key, const char *value)
                         host->response_url_json_path = strdup(value);
                         changed = true;
                     }
+                    else if (strcmp(prop, "response_deletion_url_json_path") == 0)
+                    {
+                        free(host->response_deletion_url_json_path);
+                        host->response_deletion_url_json_path = strdup(value);
+                        changed = true;
+                    }
                 }
                 else
                 {
@@ -1161,6 +1203,7 @@ config_remove_host(const char *host_name)
             free(config->hosts[i]->request_body_format);
             free(config->hosts[i]->file_form_field);
             free(config->hosts[i]->response_url_json_path);
+            free(config->hosts[i]->response_deletion_url_json_path);
 
             if (config->hosts[i]->static_field_count > 0)
             {
@@ -1311,6 +1354,7 @@ config_free(hostman_config_t *config)
             free(config->hosts[i]->request_body_format);
             free(config->hosts[i]->file_form_field);
             free(config->hosts[i]->response_url_json_path);
+            free(config->hosts[i]->response_deletion_url_json_path);
 
             if (config->hosts[i]->static_field_count > 0)
             {

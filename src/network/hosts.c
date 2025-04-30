@@ -94,22 +94,27 @@ hosts_add_interactive(void)
     }
 
     printf("Authentication types:\n");
-    printf("  1. Bearer token (Authorization: Bearer YOUR_TOKEN)\n");
-    printf("  2. API key in header (Custom-Header: YOUR_KEY)\n");
-    printf("  3. API key in URL parameter (?api_key=YOUR_KEY)\n");
+    printf("  1. No authentication\n");
+    printf("  2. Bearer token (Authorization: Bearer YOUR_TOKEN)\n");
+    printf("  3. API key in header (Custom-Header: YOUR_KEY)\n");
+    printf("  4. API key in URL parameter (?api_key=YOUR_KEY)\n");
 
     char *auth_type_input = read_input("Select authentication type [1]: ", false);
     char *auth_type = NULL;
 
     if (!auth_type_input || strcmp(auth_type_input, "1") == 0)
     {
-        auth_type = strdup("bearer");
+        auth_type = strdup("none");
     }
     else if (strcmp(auth_type_input, "2") == 0)
     {
-        auth_type = strdup("header");
+        auth_type = strdup("bearer");
     }
     else if (strcmp(auth_type_input, "3") == 0)
+    {
+        auth_type = strdup("header");
+    }
+    else if (strcmp(auth_type_input, "4") == 0)
     {
         auth_type = strdup("param");
     }
@@ -125,32 +130,37 @@ hosts_add_interactive(void)
     free(auth_type_input);
 
     char *api_key_name = NULL;
-    char default_key_name[64] = "Authorization";
+    char *api_key = NULL;
 
-    if (strcmp(auth_type, "bearer") == 0)
+    if (strcmp(auth_type, "none") != 0)
     {
-        strcpy(default_key_name, "Authorization");
-    }
-    else if (strcmp(auth_type, "header") == 0)
-    {
-        strcpy(default_key_name, "X-API-Key");
-    }
-    else
-    {
-        strcpy(default_key_name, "api_key");
-    }
+        char default_key_name[64] = "Authorization";
 
-    api_key_name = read_input_default("API key header/parameter name", default_key_name);
+        if (strcmp(auth_type, "bearer") == 0)
+        {
+            strcpy(default_key_name, "Authorization");
+        }
+        else if (strcmp(auth_type, "header") == 0)
+        {
+            strcpy(default_key_name, "X-API-Key");
+        }
+        else
+        {
+            strcpy(default_key_name, "api_key");
+        }
 
-    char *api_key = read_input("API key or token: ", true);
-    if (!api_key)
-    {
-        fprintf(stderr, "Error: Failed to read API key\n");
-        free(name);
-        free(api_endpoint);
-        free(auth_type);
-        free(api_key_name);
-        return EXIT_FAILURE;
+        api_key_name = read_input_default("API key header/parameter name", default_key_name);
+
+        api_key = read_input("API key or token: ", true);
+        if (!api_key)
+        {
+            fprintf(stderr, "Error: Failed to read API key\n");
+            free(name);
+            free(api_endpoint);
+            free(auth_type);
+            free(api_key_name);
+            return EXIT_FAILURE;
+        }
     }
 
     char *request_body_format = read_input_default("Request body format", "multipart");
@@ -289,8 +299,8 @@ hosts_add(const char *name,
           int static_field_count)
 {
 
-    if (!name || !api_endpoint || !auth_type || !api_key_name || !api_key || !request_body_format ||
-        !file_form_field || !response_url_json_path || !response_deletion_url_json_path)
+    if (!name || !api_endpoint || !auth_type || !request_body_format || !file_form_field ||
+        !response_url_json_path || !response_deletion_url_json_path)
     {
         log_error("Missing required host configuration fields");
         return false;
@@ -303,11 +313,21 @@ hosts_add(const char *name,
         return false;
     }
 
-    char *encrypted_key = encryption_encrypt_api_key(api_key);
-    if (!encrypted_key)
+    char *encrypted_key = NULL;
+    if (strcmp(auth_type, "none") != 0)
     {
-        log_error("Failed to encrypt API key");
-        return false;
+        if (!api_key_name || !api_key)
+        {
+            log_error("Missing required authentication fields");
+            return false;
+        }
+
+        encrypted_key = encryption_encrypt_api_key(api_key);
+        if (!encrypted_key)
+        {
+            log_error("Failed to encrypt API key");
+            return false;
+        }
     }
 
     host_config_t *host = calloc(1, sizeof(host_config_t));
@@ -321,7 +341,8 @@ hosts_add(const char *name,
     host->name = strdup(name);
     host->api_endpoint = strdup(api_endpoint);
     host->auth_type = strdup(auth_type);
-    host->api_key_name = strdup(api_key_name);
+    host->api_key_name =
+      (api_key_name && strcmp(auth_type, "none") != 0) ? strdup(api_key_name) : NULL;
     host->api_key_encrypted = encrypted_key;
     host->request_body_format = strdup(request_body_format);
     host->file_form_field = strdup(file_form_field);
